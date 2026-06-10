@@ -4,19 +4,23 @@
       ← 이전 리스트로 돌아가기
     </button>
 
-    <div class="flex flex-col lg:flex-row gap-6">
+    <div v-if="currentProperty" class="flex flex-col lg:flex-row gap-6">
       <div class="flex-grow bg-white border border-gray-200 rounded-3xl p-6 md:p-8 space-y-8 shadow-xl">
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-gray-100 pb-6">
           <div>
             <span class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
-              LumiRoom 안심 1등급 매물
+              LumiRoom 안심 {{ currentProperty.grade }}등급 매물
             </span>
-            <h1 class="text-4xl font-black text-gray-900 mt-3 leading-tight">원룸 월세 1000 / 55</h1>
-            <p class="text-gray-400 text-sm mt-2 font-medium leading-relaxed">서울시 관악구 신림동 1432-1 · 3층</p>
+            <h1 class="text-4xl font-black text-gray-900 mt-3 leading-tight">
+              {{ currentProperty.type }} {{ currentProperty.price }}
+            </h1>
+            <p class="text-gray-400 text-sm mt-2 font-medium leading-relaxed">{{ currentProperty.address }} · 3층</p>
           </div>
           <div class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-center sm:min-w-[150px] shadow-sm">
             <span class="text-xs text-gray-400 font-bold block mb-1">인프라 매칭 안전도</span>
-            <span class="text-3xl font-black text-brand-point drop-shadow-[0_0_4px_rgba(250,204,21,0.3)]">98점</span>
+            <span class="text-3xl font-black text-brand-point drop-shadow-[0_0_4px_rgba(250,204,21,0.3)]">
+              {{ currentProperty.score }}점
+            </span>
           </div>
         </div>
 
@@ -53,17 +57,17 @@
             <span class="w-2 h-4 bg-brand-point rounded-sm"></span>LumiRoom 안심 인프라 정밀 분석 리포트
           </h3>
           <p class="text-gray-400 text-xs font-medium mb-6 leading-relaxed">
-            행정안전부 및 경찰청 실시간 개방 API 데이터를 스프링 배치 파이프라인으로 매일 동기화하여 분석해낸 반경 50미터 내 공간 인덱싱 요약 지표입니다.
+            행정안전부 및 경찰청 실시간 개방 데이터를 스프링 배치 파이프라인으로 분석해낸 반경 50미터 내 공간 인덱싱 요약 지표입니다.
           </p>
 
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div class="bg-white p-4 rounded-xl border border-gray-200 text-center shadow-sm">
               <span class="text-xs text-gray-400 font-bold">방범용 고화질 CCTV</span>
-              <span class="block text-2xl font-black text-gray-800 mt-1">4 대 운용</span>
+              <span class="block text-2xl font-black text-red-500 mt-1">{{ currentProperty.cctvCount || 4 }} 대 운용</span>
             </div>
             <div class="bg-white p-4 rounded-xl border border-gray-200 text-center shadow-sm">
               <span class="text-xs text-gray-400 font-bold">지자체 스마트 가로등</span>
-              <span class="block text-2xl font-black text-gray-800 mt-1">6 개 배치</span>
+              <span class="block text-2xl font-black text-gray-800 mt-1">{{ currentProperty.lampCount || 6 }} 개 배치</span>
             </div>
             <div class="bg-white p-4 rounded-xl border border-gray-200 text-center shadow-sm">
               <span class="text-xs text-gray-400 font-bold">야간 안심 보안등</span>
@@ -72,9 +76,37 @@
           </div>
         </div>
 
-        <button class="w-full bg-brand-point hover:bg-yellow-500 text-gray-950 py-4 rounded-xl font-black transition-all shadow-lg transform active:scale-95 text-base">
-          이 방 안전하게 바로 문의하기
-        </button>
+        <div class="pt-2 border-t border-gray-200">
+          <h3 class="text-xl font-black text-gray-900 mb-3 flex items-center gap-2">
+            <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>실거주 체감 치안 리뷰
+          </h3>
+
+          <div class="flex gap-2 mb-4">
+            <input 
+              v-model="newComment"
+              @keyup.enter="submitComment"
+              type="text" 
+              placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
+              class="flex-grow p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold outline-none focus:border-brand-point text-gray-900 placeholder-gray-400"
+            />
+            <button @click="submitComment" class="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-300 px-5 rounded-xl font-black text-xs shadow-md transition-colors whitespace-nowrap">
+              등록
+            </button>
+          </div>
+
+          <div class="space-y-2.5 max-h-60 overflow-y-auto pr-1">
+            <div v-for="comment in comments" :key="comment.id" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs shadow-sm">
+              <div class="flex justify-between items-center mb-1 font-bold text-gray-400">
+                <span class="text-gray-800 font-black">{{ comment.userName }}</span>
+                <span class="text-[10px] font-medium">{{ comment.date }}</span>
+              </div>
+              <p class="text-gray-600 font-semibold leading-relaxed">{{ comment.content }}</p>
+            </div>
+            <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
+              등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="w-full lg:w-[400px] bg-brand-card border border-gray-700 rounded-3xl p-4 shadow-xl flex flex-col h-[400px] lg:h-auto">
@@ -84,35 +116,80 @@
           </svg>
           매물 위치 및 주변 인프라 지도
         </h3>
-        <div id="mini-map" class="w-full flex-grow bg-gray-950 rounded-2xl relative overflow-hidden">
-          <div class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs font-bold p-4 text-center">
-            카카오 지도 API<br/>(매물 중심 좌표 마킹 렌더링 영역)
-          </div>
-        </div>
+        <div id="mini-map" class="w-full flex-grow bg-gray-950 rounded-2xl relative overflow-hidden" style="min-height: 300px;"></div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
+import { usePropertyStore } from '@/stores/properties'
 
-onMounted(() => {
-  // 카카오 지도 API 인스턴스 구성 및 단독 마킹 처리
+const route = useRoute()
+const propertyStore = usePropertyStore()
+
+// ★ 해결책 1: 빈 null이 아니라 스크립트 실행 직후(초기 렌더링)부터 마스터 데이터를 동기 매핑하여 v-if 타이밍 충돌을 예방합니다.
+const targetId = parseInt(route.params.id)
+const currentProperty = ref(
+  propertyStore.propertiesList.find(p => p.id === targetId) || propertyStore.propertiesList[0]
+)
+
+const newComment = ref('')
+const comments = ref([
+  { id: 1, userName: '안심방랑자', date: '2026-06-09', content: '여기 저녁에 직접 가봤는데 대로변에서 골목 진입하자마자 고광도 보안등이 켜져 있어서 되게 밝아요.' },
+  { id: 2, userName: '신림원주민', date: '2026-06-08', content: '반경 내에 지구대가 가깝다 보니 경찰 순찰차가 수시로 돌아서 안심하고 거주할 수 있습니다.' }
+])
+
+const submitComment = () => {
+  if (!newComment.value.trim()) return
+  comments.value.unshift({
+    id: Date.now(),
+    userName: '익명의 탐색자',
+    date: new Date().toISOString().split('T')[0],
+    content: newComment.value
+  })
+  newComment.value = ''
+}
+
+const initMiniMap = () => {
   if (window.kakao && window.kakao.maps) {
-    const container = document.getElementById('mini-map')
-    const options = {
-      center: new window.kakao.maps.LatLng(37.4812, 126.9296), // 가상 신림동 매물 좌표
-      level: 2
-    }
-    const map = new window.kakao.maps.Map(container, options)
-
-    // 매물 고유 위치 마커 추가 표시
-    const markerPosition = new window.kakao.maps.LatLng(37.4812, 126.9296)
-    const marker = new window.kakao.maps.Marker({
-      position: markerPosition
+    window.kakao.maps.load(() => {
+      const container = document.getElementById('mini-map')
+      if (!container) return
+      
+      const options = {
+        center: new window.kakao.maps.LatLng(37.4812, 126.9296),
+        level: 2
+      }
+      const map = new window.kakao.maps.Map(container, options)
+      const marker = new window.kakao.maps.Marker({
+        position: new window.kakao.maps.LatLng(37.4812, 126.9296)
+      })
+      marker.setMap(map)
+      
+      // 레이아웃 보정 함수 호출
+      map.relayout()
     })
-    marker.setMap(map)
   }
+}
+
+const loadPropertyData = () => {
+  const tId = parseInt(route.params.id)
+  currentProperty.value = propertyStore.propertiesList.find(p => p.id === tId) 
+    || propertyStore.propertiesList[0]
+}
+
+// ★ 해결책 2: nextTick을 통해 Vue의 가상 돔 드로잉 스케줄러가 끝난 것을 확인한 뒤 안전하게 지도를 맵핑합니다.
+watch(() => route.params.id, async () => {
+  loadPropertyData()
+  await nextTick()
+  initMiniMap()
+})
+
+onMounted(async () => {
+  await nextTick()
+  initMiniMap()
 })
 </script>

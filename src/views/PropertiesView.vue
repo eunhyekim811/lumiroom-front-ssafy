@@ -18,9 +18,9 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <div 
-        v-for="item in mockProperties" :key="item.id"
+        v-for="item in propertyStore.propertiesList" :key="item.id"
         @click="navigateToDetail(item.id)"
-        class="bg-white border border-gray-200 hover:border-brand-point rounded-2xl p-5 cursor-pointer transition-all duration-300 group shadow-sm hover:glow-yellow"
+        class="bg-white border border-gray-200 hover:border-brand-point rounded-2xl p-5 cursor-pointer transition-all duration-300 group shadow-sm hover:shadow-lg hover:scale-[1.01]"
       >
         <div class="h-48 bg-gray-100 rounded-xl mb-4 relative overflow-hidden">
           <div class="absolute top-3 left-3 bg-yellow-100 border border-amber-200 backdrop-blur text-xs font-black text-brand-point px-3 py-1 rounded-lg shadow-sm">
@@ -41,8 +41,8 @@
         </div>
 
         <div class="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-400">
-          <span>CCTV {{ item.cctvCount }}대</span>
-          <span>보안등 {{ item.lampCount }}개</span>
+          <span>CCTV {{ item.cctvCount || 4 }}대</span>
+          <span>보안등 {{ item.lampCount || 3 }}개</span>
           <span class="text-brand-point">안심 귀가선 내 존재</span>
         </div>
       </div>
@@ -52,12 +52,12 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-const router = useRouter()
+import { usePropertyStore } from '@/stores/properties'
 
-const mockProperties = [
-  { id: 1, type: '원룸 월세', price: '1000 / 55', address: '관악구 신림동 1432-1', score: 98, grade: 1, cctvCount: 4, lampCount: 6 },
-  { id: 2, type: '투룸 전세', price: '1억 8000', address: '관악구 신림동 412-5', score: 85, grade: 2, cctvCount: 2, lampCount: 4 },
-  { id: 3, type: '오피스텔 월세', price: '2000 / 70', address: '관악구 신림동 92-11', score: 92, grade: 1, cctvCount: 5, lampCount: 3 }
-]
-const navigateToDetail = (id) => { router.push(`/properties/${id}`) }
+const router = useRouter()
+const propertyStore = usePropertyStore()
+
+const navigateToDetail = (id) => {
+  router.push(`/properties/${id}`)
+}
 </script>

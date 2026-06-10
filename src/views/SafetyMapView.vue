@@ -45,6 +45,7 @@
               총 {{ propertyStore.propertiesList.length }}개
             </span>
           </div>
+          <p class="text-xs text-gray-400 font-medium leading-relaxed">매물을 클릭하면 데이터 분석 기반 인프라 현황을 관통해 드립니다.</p>
         </div>
 
         <div class="flex-grow overflow-y-auto p-4 space-y-4">
@@ -63,13 +64,16 @@
                 <h3 class="font-extrabold text-lg text-gray-900 group-hover:text-brand-point transition-colors">{{ item.type }} {{ item.price }}</h3>
                 <p class="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed">{{ item.address }}</p>
               </div>
+              <span class="text-xs px-2 py-1 rounded font-bold" :class="item.grade === 1 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200'">
+                {{ item.grade }}등급 구역
+              </span>
             </div>
           </div>
         </div>
       </div>
 
       <div v-else class="flex flex-col h-full bg-white text-gray-900">
-        <div class="p-4 border-b border-gray-200 bg-white/95 sticky top-0 flex items-center gap-3 z-20">
+        <div class="p-4 border-b border-gray-200 bg-white/95 sticky top-0 flex items-center gap-3 z-20 shadow-sm">
           <button @click="propertyStore.clearSelection()" class="p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 hover:text-gray-900 transition-colors">
             ← 뒤로
           </button>
@@ -77,19 +81,123 @@
         </div>
 
         <div class="flex-grow overflow-y-auto p-5 space-y-6">
+          <div class="flex flex-col gap-3 border-b border-gray-100 pb-5">
+            <div>
+              <span class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
+                LumiRoom 안심 {{ propertyStore.selectedProperty.grade }}등급 매물
+              </span>
+              <h1 class="text-3xl font-black text-gray-900 mt-3 leading-tight">
+                {{ propertyStore.selectedProperty.type }} {{ propertyStore.selectedProperty.price }}
+              </h1>
+              <p class="text-gray-400 text-sm mt-1.5 font-medium leading-relaxed">{{ propertyStore.selectedProperty.address }} · 3층</p>
+            </div>
+            <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-xl text-center shadow-sm">
+              <span class="text-xs text-gray-400 font-bold block mb-0.5">인프라 매칭 안전도</span>
+              <span class="text-2xl font-black text-brand-point drop-shadow-[0_0_4px_rgba(250,204,21,0.3)]">
+                {{ propertyStore.selectedProperty.score }}점
+              </span>
+            </div>
+          </div>
+
           <div>
-            <span class="text-xs font-bold bg-yellow-100 text-brand-point px-2 py-0.5 rounded shadow-sm">안전 보장 스코어 {{ propertyStore.selectedProperty.score }}점</span>
-            <h2 class="text-2xl font-black text-gray-900 mt-2">{{ propertyStore.selectedProperty.type }} {{ propertyStore.selectedProperty.price }}</h2>
-            <p class="text-sm text-gray-400 mt-1 leading-relaxed">{{ propertyStore.selectedProperty.address }}</p>
+            <h3 class="text-sm font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+              <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>매물 기본 구조 정보
+            </h3>
+            <table class="w-full text-xs text-left border-collapse border border-gray-100 shadow-sm rounded-xl overflow-hidden">
+              <tbody>
+                <tr class="border-b border-gray-100">
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500 w-1/3">방 구조</td>
+                  <td class="p-2.5 text-gray-700">분리형 원룸</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">전용 면적</td>
+                  <td class="p-2.5 text-gray-700">23.1㎡ (7평)</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">해당층 / 건물층</td>
+                  <td class="p-2.5 text-gray-700">3층 / 5층</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">엘리베이터</td>
+                  <td class="p-2.5 text-gray-700">있음</td>
+                </tr>
+                <tr class="border-b border-gray-100">
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">관리비</td>
+                  <td class="p-2.5 text-gray-700">7만원 (수도, 인터넷 포함)</td>
+                </tr>
+                <tr>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">주차 여부</td>
+                  <td class="p-2.5 text-gray-700">가능 (월 3만원)</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+
+          <div class="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-2xl p-5 shadow-sm space-y-4">
+            <div>
+              <h3 class="text-sm font-black text-gray-900 mb-1 flex items-center gap-2">
+                <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>LumiRoom 안심 인프라 정밀 분석 리포트
+              </h3>
+              <p class="text-gray-400 text-[10px] font-medium leading-relaxed">
+                행정안전부 및 경찰청 실시간 개방 데이터를 스프링 배치 파이프라인으로 분석해낸 반경 50미터 내 공간 인덱싱 요약 지표입니다.
+              </p>
+            </div>
+
+            <div class="space-y-2 text-xs font-bold">
+              <div class="flex justify-between items-center p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <span class="text-gray-500">방범용 고화질 CCTV</span>
+                <span class="text-red-500">{{ propertyStore.selectedProperty.cctvCount || 4 }} 대 운용</span>
+              </div>
+              <div class="flex justify-between items-center p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <span class="text-gray-500">지자체 스마트 가로등</span>
+                <span class="text-gray-800">{{ propertyStore.selectedProperty.lampCount || 6 }} 개 배치</span>
+              </div>
+              <div class="flex justify-between items-center p-2.5 bg-white border border-gray-200 rounded-xl shadow-sm">
+                <span class="text-gray-500">야간 안심 보안등</span>
+                <span class="text-gray-800">3 개 작동</span>
+              </div>
+            </div>
           </div>
+
+          <div class="pt-2 border-t border-gray-200">
+            <h3 class="text-sm font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+              <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>실거주 체감 치안 리뷰
+            </h3>
+
+            <div class="flex gap-2 mb-4">
+              <input 
+                v-model="newComment"
+                @keyup.enter="submitComment"
+                type="text" 
+                placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
+                class="flex-grow p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold outline-none focus:border-brand-point text-gray-900 placeholder-gray-400"
+              />
+              <button @click="submitComment" class="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-300 px-4 rounded-xl font-black text-xs shadow-md transition-colors whitespace-nowrap">
+                등록
+              </button>
+            </div>
+
+            <div class="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+              <div v-for="comment in comments" :key="comment.id" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs shadow-sm">
+                <div class="flex justify-between items-center mb-1 font-bold text-gray-400">
+                  <span class="text-gray-800 font-black">{{ comment.userName }}</span>
+                  <span class="text-[10px] font-medium">{{ comment.date }}</span>
+                </div>
+                <p class="text-gray-600 font-semibold leading-relaxed">{{ comment.content }}</p>
+              </div>
+              <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
+                등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </aside>
   </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
 
@@ -97,6 +205,23 @@ const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
 
 let mapInstance = null
+
+const newComment = ref('')
+const comments = ref([
+  { id: 1, userName: '안심방랑자', date: '2026-06-09', content: '여기 저녁에 직접 가봤는데 대로변에서 골목 진입하자마자 고광도 보안등이 켜져 있어서 되게 밝아요.' },
+  { id: 2, userName: '신림원주민', date: '2026-06-08', content: '반경 내에 지구대가 가깝다 보니 경찰 순찰차가 수시로 돌아서 안심하고 거주할 수 있습니다.' }
+])
+
+const submitComment = () => {
+  if (!newComment.value.trim()) return
+  comments.value.unshift({
+    id: Date.now(),
+    userName: '익명의 탐색자',
+    date: new Date().toISOString().split('T')[0],
+    content: newComment.value
+  })
+  newComment.value = ''
+}
 
 const getInfraLabel = (infra) => {
   const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
@@ -130,8 +255,7 @@ onMounted(() => {
         level: 3 
       }
       mapInstance = new window.kakao.maps.Map(container, options)
-      
-      // 스토어 검색어가 홈으로부터 주입되어 존재할 시 마운트 즉시 연쇄 검색 수행
+      mapInstance.relayout()
       if (infraStore.searchKeyword) searchPlace()
     })
   }
