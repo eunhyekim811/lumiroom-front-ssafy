@@ -4,10 +4,10 @@ import { ref } from 'vue'
 export const useInfraStore = defineStore('infra', () => {
   // 1. 인프라 활성화 상태 리스트
   const filters = ref({
-    cctv: true,
-    securityLight: true,
+    cctv: false,
+    securityLight: false,
     streetLight: false,
-    police: true
+    police: false
   })
 
   // 2. 사용자의 현재 위치 정보 및 지도 중심 좌표 관리

@@ -4,6 +4,18 @@
     <main class="flex-grow relative h-full">
       <div id="kakao-map" class="w-full h-full bg-gray-950" style="min-height: 100%;"></div>
 
+      <div v-if="isZoomTooFar" class="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex items-center justify-center pointer-events-none animate-fade-in">
+        <div class="bg-gray-900/95 border-2 border-yellow-400 text-white px-6 py-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2 pointer-events-auto">
+          <svg class="w-8 h-8 text-yellow-400 animate-bounce" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+          <p class="font-black text-sm text-center浏览 leading-relaxed">
+            지도가 너무 멀리 감지되었습니다.<br/>
+            <span class="text-yellow-400">안심 인프라 조회를 위해 지도를 더 확대해 주세요.</span>
+          </p>
+        </div>
+      </div>
+
       <div class="absolute top-4 left-4 z-30 flex flex-wrap gap-2.5 max-w-xl">
         <button 
           v-for="(status, infra) in infraStore.filters" :key="infra"
@@ -197,14 +209,26 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
+import { fetchInfraMarkers } from '@/api/infra'
 
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
 
 let mapInstance = null
+
+// 지도가 너무 축소되었는지 제어할 반응형 토글 변수 수립
+const isZoomTooFar = ref(false)
+
+// 카카오 커스텀 오버레이 원형 점 인스턴스 배열 구조 백업 저장소
+const mapMarkers = ref({
+  cctv: [],
+  securityLight: [],
+  streetLight: [],
+  police: []
+})
 
 const newComment = ref('')
 const comments = ref([
@@ -224,7 +248,7 @@ const submitComment = () => {
 }
 
 const getInfraLabel = (infra) => {
-  const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
+  const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안시설' }
   return labels[infra]
 }
 const getInfraColorClass = (infra) => {
@@ -232,8 +256,78 @@ const getInfraColorClass = (infra) => {
   return classes[infra]
 }
 
+// 지도가 너무 멀어지면 마커 소거 및 차단 가드 훅 추가
+const clearAllOverlaysOnMap = () => {
+  Object.keys(mapMarkers.value).forEach(type => {
+    mapMarkers.value[type].forEach(overlay => overlay.setMap(null))
+    mapMarkers.value[type] = []
+  })
+}
+
+const updateInfraMarkers = async (infraType) => {
+  if (!mapInstance) return
+
+  // 안전 장치: 레벨 5 이상(숫자가 클수록 멀어짐)인 경우 백엔드 통신 차단 및 조기 반환(Guard Clause)
+  if (mapInstance.getLevel() > 4) return
+
+  mapMarkers.value[infraType].forEach(overlay => overlay.setMap(null))
+  mapMarkers.value[infraType] = []
+
+  if (!infraStore.filters[infraType]) return
+
+  const bounds = mapInstance.getBounds()
+  const sw = bounds.getSouthWest()
+  const ne = bounds.getNorthEast()
+
+  const params = {
+    type: infraType,
+    swLat: sw.getLat(),
+    swLng: sw.getLng(),
+    neLat: ne.getLat(),
+    neLng: ne.getLng()
+  }
+
+  const markerData = await fetchInfraMarkers(params)
+
+  markerData.forEach(item => {
+    const markerPosition = new window.kakao.maps.LatLng(item.latitude, item.longitude)
+    const contentHTML = `<div class="infra-dot ${infraType}-dot" title="${getInfraLabel(infraType)}"></div>`
+
+    const overlay = new window.kakao.maps.CustomOverlay({
+      position: markerPosition,
+      content: contentHTML,
+      yAnchor: 0.5
+    })
+
+    overlay.setMap(mapInstance)
+    mapMarkers.value[infraType].push(overlay)
+  })
+}
+
+const reloadAllActiveFilters = () => {
+  if (!mapInstance || mapInstance.getLevel() > 4) return
+  Object.keys(infraStore.filters).forEach(type => {
+    updateInfraMarkers(type)
+  })
+}
+
+// 필터 변경 추적 Watch
+watch(() => infraStore.filters, (newFilters) => {
+  if (!mapInstance || mapInstance.getLevel() > 4) return
+  Object.keys(newFilters).forEach(type => {
+    updateInfraMarkers(type)
+  })
+}, { deep: true })
+
 const searchPlace = () => {
   if (!infraStore.searchKeyword.trim() || !mapInstance) return
+
+  // 장소 검색 시 필터는 일단 리셋 꺼짐 처리
+  infraStore.filters.cctv = false
+  infraStore.filters.securityLight = false
+  infraStore.filters.streetLight = false
+  infraStore.filters.police = false
+
   const ps = new window.kakao.maps.services.Places()
   ps.keywordSearch(infraStore.searchKeyword, (data, status) => {
     if (status === window.kakao.maps.services.Status.OK) {
@@ -242,11 +336,14 @@ const searchPlace = () => {
         bounds.extend(new window.kakao.maps.LatLng(data[i].y, data[i].x))
       }
       mapInstance.setBounds(bounds)
+    } else {
+      alert('검색 결과가 존재하지 않습니다.')
     }
   })
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await nextTick()
   if (window.kakao && window.kakao.maps) {
     window.kakao.maps.load(() => {
       const container = document.getElementById('kakao-map')
@@ -256,8 +353,73 @@ onMounted(() => {
       }
       mapInstance = new window.kakao.maps.Map(container, options)
       mapInstance.relayout()
+
+      // 마우스 휠 스크롤 즉시 감지하여 차단 여부를 토글하는 실시간 스캔 이벤트 연동
+      window.kakao.maps.event.addListener(mapInstance, 'zoom_changed', () => {
+        const currentLevel = mapInstance.getLevel()
+        if (currentLevel > 5) {
+          isZoomTooFar.value = true
+          clearAllOverlaysOnMap() // 레벨 초과 시 지도 위 모든 인프라 마커를 물리적 소거
+        } else {
+          isZoomTooFar.value = false
+        }
+      })
+
+      // 지도 드래그 및 움직임 종료 이벤트 바인딩
+      window.kakao.maps.event.addListener(mapInstance, 'idle', () => {
+        const currentLevel = mapInstance.getLevel()
+        if (currentLevel > 4) {
+          isZoomTooFar.value = true
+          clearAllOverlaysOnMap()
+          return
+        }
+        
+        isZoomTooFar.value = false
+        const center = mapInstance.getCenter()
+        infraStore.updateCenter(center.getLat(), center.getLat())
+        reloadAllActiveFilters() // 허용 레벨일 때만 정상 로드
+      })
+
+      // 최초 마운트 시 축척 유효성 검사 검사
+      if (mapInstance.getLevel() > 4) {
+        isZoomTooFar.value = true
+      }
+
       if (infraStore.searchKeyword) searchPlace()
+      else reloadAllActiveFilters()
     })
   }
 })
 </script>
+
+<style scoped>
+/* 커스텀 마킹 원형 점 디자인 명세 */
+:deep(.infra-dot) {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  transition: transform 0.1s ease;
+  cursor: pointer;
+}
+
+:deep(.infra-dot:hover) {
+  transform: scale(1.4);
+  z-index: 100;
+}
+
+:deep(.cctv-dot) { background-color: #EF4444; }
+:deep(.securityLight-dot) { background-color: #F97316; }
+:deep(.streetLight-dot) { background-color: #FACC15; border-color: rgba(0, 0, 0, 0.3); }
+:deep(.police-dot) { background-color: #60A5FA; }
+
+/* 레이어 페이드인 페이드인 효과 */
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+</style>
