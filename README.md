@@ -82,6 +82,7 @@ pnpm install
 ```text
 # .env
 VITE_KAKAO_MAP_API_KEY=발급받으신_카카오_JavaScript_키를_여기에_입력하세요
+VITE_API_BASE_URL=http://localhost:8080
 
 ```
 

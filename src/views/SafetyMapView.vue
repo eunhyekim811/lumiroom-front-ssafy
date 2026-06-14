@@ -33,6 +33,34 @@
           검색
         </button>
       </div>
+
+      <div class="absolute top-4 left-4 mt-32 z-30 bg-white border-2 border-zinc-300 p-3 rounded-2xl shadow-2xl w-80 text-gray-900">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <span class="text-xs font-black text-gray-600">조회 반경</span>
+          <span class="text-xs font-black text-gray-900">{{ infraStore.radius }}m</span>
+        </div>
+        <input
+          :value="infraStore.radius"
+          @input="handleRadiusInput"
+          type="range"
+          min="100"
+          max="1500"
+          step="100"
+          class="w-full accent-yellow-400"
+        />
+      </div>
+
+      <div class="absolute bottom-5 left-5 z-30 flex flex-col gap-2 pointer-events-none">
+        <div v-if="infraStore.isLoading" class="bg-gray-950/90 border border-gray-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xl">
+          치안 인프라 조회 중...
+        </div>
+        <div v-if="infraStore.errorMessage" class="bg-red-600/95 border border-red-400 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xl max-w-sm">
+          {{ infraStore.errorMessage }}
+        </div>
+        <div v-if="selectedFilterCount === 0" class="bg-gray-950/90 border border-gray-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xl">
+          표시할 치안 인프라 필터를 선택해 주세요.
+        </div>
+      </div>
     </main>
 
     <aside class="w-[420px] border-l border-gray-700 bg-brand-card flex flex-col h-full z-10 shadow-xl overflow-y-auto">
@@ -197,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
 
@@ -205,6 +233,13 @@ const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
 
 let mapInstance = null
+let debounceTimer = null
+const markerEntries = []
+let activeInfoWindow = null
+
+const selectedFilterCount = computed(() => {
+  return Object.values(infraStore.filters).filter(Boolean).length
+})
 
 const newComment = ref('')
 const comments = ref([
@@ -232,6 +267,106 @@ const getInfraColorClass = (infra) => {
   return classes[infra]
 }
 
+const getInfraMarkerColor = (infra) => {
+  const colors = {
+    cctv: '#ef4444',
+    securityLight: '#f97316',
+    streetLight: '#facc15',
+    police: '#60a5fa'
+  }
+  return colors[infra] || '#6b7280'
+}
+
+const escapeHtml = (value) => {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
+
+const createMarkerImage = (type) => {
+  const color = getInfraMarkerColor(type)
+  const svg = `
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 41C17 41 31 25.9 31 15.8C31 7.6 24.7 1 17 1C9.3 1 3 7.6 3 15.8C3 25.9 17 41 17 41Z" fill="${color}" stroke="white" stroke-width="2"/>
+      <circle cx="17" cy="15.5" r="5" fill="white"/>
+    </svg>
+  `.trim()
+  const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+  const size = new window.kakao.maps.Size(34, 42)
+  const option = { offset: new window.kakao.maps.Point(17, 42) }
+  return new window.kakao.maps.MarkerImage(src, size, option)
+}
+
+const clearInfraMarkers = () => {
+  markerEntries.forEach(({ marker }) => marker.setMap(null))
+  markerEntries.splice(0, markerEntries.length)
+  if (activeInfoWindow) {
+    activeInfoWindow.close()
+    activeInfoWindow = null
+  }
+}
+
+const createInfoWindowContent = (item) => {
+  const installedAt = item.installedAt || '설치일 정보 없음'
+  return `
+    <div style="min-width:220px;padding:12px 14px;color:#111827;font-family:Pretendard, sans-serif;">
+      <div style="font-size:13px;font-weight:900;margin-bottom:6px;">${escapeHtml(item.name || getInfraLabel(item.type))}</div>
+      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:3px;">${escapeHtml(getInfraLabel(item.type))}</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5;">${escapeHtml(item.address || '주소 정보 없음')}</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5;">출처: ${escapeHtml(item.source || '출처 정보 없음')}</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5;">설치일: ${escapeHtml(installedAt)}</div>
+    </div>
+  `
+}
+
+const renderInfraMarkers = () => {
+  if (!mapInstance || !window.kakao?.maps) return
+
+  clearInfraMarkers()
+
+  infraStore.infraItems.forEach((item) => {
+    if (!item?.lat || !item?.lng) return
+
+    const marker = new window.kakao.maps.Marker({
+      map: mapInstance,
+      position: new window.kakao.maps.LatLng(Number(item.lat), Number(item.lng)),
+      image: createMarkerImage(item.type)
+    })
+
+    const infoWindow = new window.kakao.maps.InfoWindow({
+      content: createInfoWindowContent(item),
+      removable: true
+    })
+
+    window.kakao.maps.event.addListener(marker, 'click', () => {
+      if (activeInfoWindow) activeInfoWindow.close()
+      infoWindow.open(mapInstance, marker)
+      activeInfoWindow = infoWindow
+    })
+
+    markerEntries.push({ marker, infoWindow, key: `${item.type}-${item.id}` })
+  })
+}
+
+const loadInfraByCurrentCenter = () => {
+  if (!mapInstance) return
+  const center = mapInstance.getCenter()
+  infraStore.updateCenter(center.getLat(), center.getLng())
+  infraStore.loadInfraItems()
+}
+
+const debounceLoadInfra = () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(loadInfraByCurrentCenter, 450)
+}
+
+const handleRadiusInput = (event) => {
+  infraStore.updateRadius(event.target.value)
+}
+
 const searchPlace = () => {
   if (!infraStore.searchKeyword.trim() || !mapInstance) return
   const ps = new window.kakao.maps.services.Places()
@@ -242,6 +377,7 @@ const searchPlace = () => {
         bounds.extend(new window.kakao.maps.LatLng(data[i].y, data[i].x))
       }
       mapInstance.setBounds(bounds)
+      debounceLoadInfra()
     }
   })
 }
@@ -256,8 +392,38 @@ onMounted(() => {
       }
       mapInstance = new window.kakao.maps.Map(container, options)
       mapInstance.relayout()
+      window.kakao.maps.event.addListener(mapInstance, 'idle', debounceLoadInfra)
+      loadInfraByCurrentCenter()
       if (infraStore.searchKeyword) searchPlace()
     })
   }
+})
+
+watch(
+  () => infraStore.infraItems,
+  renderInfraMarkers,
+  { deep: true }
+)
+
+watch(
+  () => ({ ...infraStore.filters }),
+  () => {
+    if (!mapInstance) return
+    debounceLoadInfra()
+  },
+  { deep: true }
+)
+
+watch(
+  () => infraStore.radius,
+  () => {
+    if (!mapInstance) return
+    debounceLoadInfra()
+  }
+)
+
+onBeforeUnmount(() => {
+  clearTimeout(debounceTimer)
+  clearInfraMarkers()
 })
 </script>
