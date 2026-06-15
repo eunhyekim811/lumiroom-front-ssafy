@@ -4,18 +4,6 @@
     <main class="flex-grow relative h-full">
       <div id="kakao-map" class="w-full h-full bg-gray-950" style="min-height: 100%;"></div>
 
-      <div v-if="isZoomTooFar" class="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex items-center justify-center pointer-events-none">
-        <div class="bg-gray-900/95 border-2 border-yellow-400 text-white px-6 py-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2 pointer-events-auto">
-          <svg class="w-8 h-8 text-yellow-400 animate-bounce" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-          </svg>
-          <p class="font-black text-sm text-center leading-relaxed">
-            지도가 너무 멀리 감지되었습니다.<br/>
-            <span class="text-yellow-400">안심 인프라 조회를 위해 지도를 더 확대해 주세요.</span>
-          </p>
-        </div>
-      </div>
-
       <div class="absolute top-4 left-4 z-30 flex flex-wrap gap-2.5 max-w-xl">
         <button 
           v-for="(status, infra) in infraStore.filters" :key="infra"
@@ -44,6 +32,34 @@
         <button @click="searchPlace" class="bg-yellow-400 hover:bg-yellow-500 text-black px-3 py-1.5 rounded-xl font-black text-xs shadow-md">
           검색
         </button>
+      </div>
+
+      <div class="absolute top-4 left-4 mt-32 z-30 bg-white border-2 border-zinc-300 p-3 rounded-2xl shadow-2xl w-80 text-gray-900">
+        <div class="flex items-center justify-between gap-3 mb-2">
+          <span class="text-xs font-black text-gray-600">조회 반경</span>
+          <span class="text-xs font-black text-gray-900">{{ infraStore.radius }}m</span>
+        </div>
+        <input
+          :value="infraStore.radius"
+          @input="handleRadiusInput"
+          type="range"
+          min="100"
+          max="1500"
+          step="100"
+          class="w-full accent-yellow-400"
+        />
+      </div>
+
+      <div class="absolute bottom-5 left-5 z-30 flex flex-col gap-2 pointer-events-none">
+        <div v-if="infraStore.isLoading" class="bg-gray-950/90 border border-gray-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xl">
+          치안 인프라 조회 중...
+        </div>
+        <div v-if="infraStore.errorMessage" class="bg-red-600/95 border border-red-400 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xl max-w-sm">
+          {{ infraStore.errorMessage }}
+        </div>
+        <div v-if="selectedFilterCount === 0" class="bg-gray-950/90 border border-gray-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-xl">
+          표시할 치안 인프라 필터를 선택해 주세요.
+        </div>
       </div>
     </main>
 
@@ -151,7 +167,7 @@
                 <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>LumiRoom 안심 인프라 정밀 분석 리포트
               </h3>
               <p class="text-gray-400 text-[10px] font-medium leading-relaxed">
-                스프링 배치 파이프라인으로 실시간 가공 수집된 반경 50미터 공간 마킹 매칭 정보입니다.
+                행정안전부 및 경찰청 실시간 개방 데이터를 스프링 배치 파이프라인으로 분석해낸 반경 50미터 내 공간 인덱싱 요약 지표입니다.
               </p>
             </div>
 
@@ -197,12 +213,11 @@
                 </div>
                 <p class="text-gray-600 font-semibold leading-relaxed">{{ comment.content }}</p>
               </div>
+              <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
+                등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
+              </div>
             </div>
           </div>
-          
-          <button class="w-full bg-brand-point hover:bg-yellow-500 text-gray-950 py-3.5 rounded-xl font-extrabold transition-all shadow-lg transform active:scale-95 text-base">
-            이 방 중개사에게 안심 문의하기
-          </button>
         </div>
       </div>
     </aside>
@@ -210,22 +225,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
-import { fetchInfraMarkers } from '@/api/infra'
 
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
 
 let mapInstance = null
-const isZoomTooFar = ref(false)
+let debounceTimer = null
+const markerEntries = []
+let activeInfoWindow = null
 
-const mapMarkers = ref({
-  cctv: [],
-  securityLight: [],
-  streetLight: [],
-  police: [] // ★ 치안안전시설 오버레이 배열 완비
+const selectedFilterCount = computed(() => {
+  return Object.values(infraStore.filters).filter(Boolean).length
 })
 
 const newComment = ref('')
@@ -245,7 +258,6 @@ const submitComment = () => {
   newComment.value = ''
 }
 
-// 🎯 [기능 동기화] 레이블에 '치안안전시설' 명시
 const getInfraLabel = (infra) => {
   const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
   return labels[infra]
@@ -255,73 +267,108 @@ const getInfraColorClass = (infra) => {
   return classes[infra]
 }
 
-const clearAllOverlaysOnMap = () => {
-  Object.keys(mapMarkers.value).forEach(type => {
-    mapMarkers.value[type].forEach(overlay => overlay.setMap(null))
-    mapMarkers.value[type] = []
-  })
+const getInfraMarkerColor = (infra) => {
+  const colors = {
+    cctv: '#ef4444',
+    securityLight: '#f97316',
+    streetLight: '#facc15',
+    police: '#60a5fa'
+  }
+  return colors[infra] || '#6b7280'
 }
 
-const updateInfraMarkers = async (infraType) => {
-  if (!mapInstance) return
-  if (mapInstance.getLevel() > 4) return
+const escapeHtml = (value) => {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;')
+}
 
-  mapMarkers.value[infraType].forEach(overlay => overlay.setMap(null))
-  mapMarkers.value[infraType] = []
+const createMarkerImage = (type) => {
+  const color = getInfraMarkerColor(type)
+  const svg = `
+    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M17 41C17 41 31 25.9 31 15.8C31 7.6 24.7 1 17 1C9.3 1 3 7.6 3 15.8C3 25.9 17 41 17 41Z" fill="${color}" stroke="white" stroke-width="2"/>
+      <circle cx="17" cy="15.5" r="5" fill="white"/>
+    </svg>
+  `.trim()
+  const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+  const size = new window.kakao.maps.Size(34, 42)
+  const option = { offset: new window.kakao.maps.Point(17, 42) }
+  return new window.kakao.maps.MarkerImage(src, size, option)
+}
 
-  if (!infraStore.filters[infraType]) return
-
-  const bounds = mapInstance.getBounds()
-  const sw = bounds.getSouthWest()
-  const ne = bounds.getNorthEast()
-
-  const params = {
-    type: infraType,
-    swLat: sw.getLat(),
-    swLng: sw.getLng(),
-    neLat: ne.getLat(),
-    neLng: ne.getLng()
+const clearInfraMarkers = () => {
+  markerEntries.forEach(({ marker }) => marker.setMap(null))
+  markerEntries.splice(0, markerEntries.length)
+  if (activeInfoWindow) {
+    activeInfoWindow.close()
+    activeInfoWindow = null
   }
+}
 
-  const markerData = await fetchInfraMarkers(params)
+const createInfoWindowContent = (item) => {
+  const installedAt = item.installedAt || '설치일 정보 없음'
+  return `
+    <div style="min-width:220px;padding:12px 14px;color:#111827;font-family:Pretendard, sans-serif;">
+      <div style="font-size:13px;font-weight:900;margin-bottom:6px;">${escapeHtml(item.name || getInfraLabel(item.type))}</div>
+      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:3px;">${escapeHtml(getInfraLabel(item.type))}</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5;">${escapeHtml(item.address || '주소 정보 없음')}</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5;">출처: ${escapeHtml(item.source || '출처 정보 없음')}</div>
+      <div style="font-size:11px;color:#374151;line-height:1.5;">설치일: ${escapeHtml(installedAt)}</div>
+    </div>
+  `
+}
 
-  markerData.forEach(item => {
-    const markerPosition = new window.kakao.maps.LatLng(item.latitude, item.longitude)
-    const contentHTML = `<div class="infra-dot ${infraType}-dot" title="${getInfraLabel(infraType)}"></div>`
+const renderInfraMarkers = () => {
+  if (!mapInstance || !window.kakao?.maps) return
 
-    const overlay = new window.kakao.maps.CustomOverlay({
-      position: markerPosition,
-      content: contentHTML,
-      yAnchor: 0.5
+  clearInfraMarkers()
+
+  infraStore.infraItems.forEach((item) => {
+    if (!item?.lat || !item?.lng) return
+
+    const marker = new window.kakao.maps.Marker({
+      map: mapInstance,
+      position: new window.kakao.maps.LatLng(Number(item.lat), Number(item.lng)),
+      image: createMarkerImage(item.type)
     })
 
-    overlay.setMap(mapInstance)
-    mapMarkers.value[infraType].push(overlay)
+    const infoWindow = new window.kakao.maps.InfoWindow({
+      content: createInfoWindowContent(item),
+      removable: true
+    })
+
+    window.kakao.maps.event.addListener(marker, 'click', () => {
+      if (activeInfoWindow) activeInfoWindow.close()
+      infoWindow.open(mapInstance, marker)
+      activeInfoWindow = infoWindow
+    })
+
+    markerEntries.push({ marker, infoWindow, key: `${item.type}-${item.id}` })
   })
 }
 
-const reloadAllActiveFilters = () => {
-  if (!mapInstance || mapInstance.getLevel() > 4) return
-  Object.keys(infraStore.filters).forEach(type => {
-    updateInfraMarkers(type)
-  })
+const loadInfraByCurrentCenter = () => {
+  if (!mapInstance) return
+  const center = mapInstance.getCenter()
+  infraStore.updateCenter(center.getLat(), center.getLng())
+  infraStore.loadInfraItems()
 }
 
-watch(() => infraStore.filters, (newFilters) => {
-  if (!mapInstance || mapInstance.getLevel() > 4) return
-  Object.keys(newFilters).forEach(type => {
-    updateInfraMarkers(type)
-  })
-}, { deep: true })
+const debounceLoadInfra = () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(loadInfraByCurrentCenter, 450)
+}
+
+const handleRadiusInput = (event) => {
+  infraStore.updateRadius(event.target.value)
+}
 
 const searchPlace = () => {
   if (!infraStore.searchKeyword.trim() || !mapInstance) return
-
-  infraStore.filters.cctv = false
-  infraStore.filters.securityLight = false
-  infraStore.filters.streetLight = false
-  infraStore.filters.police = false
-
   const ps = new window.kakao.maps.services.Places()
   ps.keywordSearch(infraStore.searchKeyword, (data, status) => {
     if (status === window.kakao.maps.services.Status.OK) {
@@ -330,14 +377,12 @@ const searchPlace = () => {
         bounds.extend(new window.kakao.maps.LatLng(data[i].y, data[i].x))
       }
       mapInstance.setBounds(bounds)
-    } else {
-      alert('검색 결과가 존재하지 않습니다.')
+      debounceLoadInfra()
     }
   })
 }
 
-onMounted(async () => {
-  await nextTick()
+onMounted(() => {
   if (window.kakao && window.kakao.maps) {
     window.kakao.maps.load(() => {
       const container = document.getElementById('kakao-map')
@@ -347,63 +392,38 @@ onMounted(async () => {
       }
       mapInstance = new window.kakao.maps.Map(container, options)
       mapInstance.relayout()
-
-      window.kakao.maps.event.addListener(mapInstance, 'zoom_changed', () => {
-        const currentLevel = mapInstance.getLevel()
-        if (currentLevel > 4) {
-          isZoomTooFar.value = true
-          clearAllOverlaysOnMap()
-        } else {
-          isZoomTooFar.value = false
-        }
-      })
-
-      window.kakao.maps.event.addListener(mapInstance, 'idle', () => {
-        const currentLevel = mapInstance.getLevel()
-        if (currentLevel > 4) {
-          isZoomTooFar.value = true
-          clearAllOverlaysOnMap()
-          return
-        }
-        
-        isZoomTooFar.value = false
-        const center = mapInstance.getCenter()
-        infraStore.updateCenter(center.getLat(), center.getLng())
-        reloadAllActiveFilters()
-      })
-
-      if (mapInstance.getLevel() > 4) {
-        isZoomTooFar.value = true
-      }
-
+      window.kakao.maps.event.addListener(mapInstance, 'idle', debounceLoadInfra)
+      loadInfraByCurrentCenter()
       if (infraStore.searchKeyword) searchPlace()
-      else reloadAllActiveFilters()
     })
   }
 })
+
+watch(
+  () => infraStore.infraItems,
+  renderInfraMarkers,
+  { deep: true }
+)
+
+watch(
+  () => ({ ...infraStore.filters }),
+  () => {
+    if (!mapInstance) return
+    debounceLoadInfra()
+  },
+  { deep: true }
+)
+
+watch(
+  () => infraStore.radius,
+  () => {
+    if (!mapInstance) return
+    debounceLoadInfra()
+  }
+)
+
+onBeforeUnmount(() => {
+  clearTimeout(debounceTimer)
+  clearInfraMarkers()
+})
 </script>
-
-<style scoped>
-:deep(.infra-dot) {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-  transition: transform 0.1s ease;
-  cursor: pointer;
-}
-
-:deep(.infra-dot:hover) {
-  transform: scale(1.4);
-  z-index: 100;
-}
-
-:deep(.cctv-dot) { background-color: #EF4444; }
-:deep(.securityLight-dot) { background-color: #F97316; }
-:deep(.streetLight-dot) { background-color: #FACC15; border-color: rgba(0, 0, 0, 0.3); }
-:deep(.police-dot) { background-color: #60A5FA; }
-
-.pointer-events-none { pointer-events: none; }
-.pointer-events-auto { pointer-events: auto; }
-</style>

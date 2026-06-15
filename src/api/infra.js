@@ -1,13 +1,25 @@
-import axios from '@/utils/axios'
+const DEFAULT_API_BASE_URL = 'http://localhost:8080'
 
-const API_BASE_URL = 'http://localhost:8080/api/infra' // 백엔드 주소로 조율
+const getApiBaseUrl = () => {
+  const configuredUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+  return configuredUrl || DEFAULT_API_BASE_URL
+}
 
-export const fetchInfraMarkers = async (params) => {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/markers`, { params })
-    return response.data
-  } catch (error) {
-    console.error('인프라 마커를 불러오지 못했습니다.', error)
-    return []
+export const fetchInfraItems = async ({ lat, lng, radius, types, signal }) => {
+  const url = new URL('/api/infra', getApiBaseUrl())
+  url.searchParams.set('lat', String(lat))
+  url.searchParams.set('lng', String(lng))
+  url.searchParams.set('radius', String(radius))
+
+  if (types?.length) {
+    url.searchParams.set('types', types.join(','))
   }
+
+  const response = await fetch(url, { signal })
+
+  if (!response.ok) {
+    throw new Error(`치안 인프라 조회 실패 (${response.status})`)
+  }
+
+  return response.json()
 }
