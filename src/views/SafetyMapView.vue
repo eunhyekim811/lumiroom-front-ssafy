@@ -4,12 +4,12 @@
     <main class="flex-grow relative h-full">
       <div id="kakao-map" class="w-full h-full bg-gray-950" style="min-height: 100%;"></div>
 
-      <div v-if="isZoomTooFar" class="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex items-center justify-center pointer-events-none animate-fade-in">
+      <div v-if="isZoomTooFar" class="absolute inset-0 bg-black/40 backdrop-blur-[1px] z-20 flex items-center justify-center pointer-events-none">
         <div class="bg-gray-900/95 border-2 border-yellow-400 text-white px-6 py-4 rounded-2xl shadow-2xl flex flex-col items-center gap-2 pointer-events-auto">
           <svg class="w-8 h-8 text-yellow-400 animate-bounce" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
           </svg>
-          <p class="font-black text-sm text-center浏览 leading-relaxed">
+          <p class="font-black text-sm text-center leading-relaxed">
             지도가 너무 멀리 감지되었습니다.<br/>
             <span class="text-yellow-400">안심 인프라 조회를 위해 지도를 더 확대해 주세요.</span>
           </p>
@@ -151,7 +151,7 @@
                 <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>LumiRoom 안심 인프라 정밀 분석 리포트
               </h3>
               <p class="text-gray-400 text-[10px] font-medium leading-relaxed">
-                행정안전부 및 경찰청 실시간 개방 데이터를 스프링 배치 파이프라인으로 분석해낸 반경 50미터 내 공간 인덱싱 요약 지표입니다.
+                스프링 배치 파이프라인으로 실시간 가공 수집된 반경 50미터 공간 마킹 매칭 정보입니다.
               </p>
             </div>
 
@@ -197,11 +197,12 @@
                 </div>
                 <p class="text-gray-600 font-semibold leading-relaxed">{{ comment.content }}</p>
               </div>
-              <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
-                등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
-              </div>
             </div>
           </div>
+          
+          <button class="w-full bg-brand-point hover:bg-yellow-500 text-gray-950 py-3.5 rounded-xl font-extrabold transition-all shadow-lg transform active:scale-95 text-base">
+            이 방 중개사에게 안심 문의하기
+          </button>
         </div>
       </div>
     </aside>
@@ -218,16 +219,13 @@ const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
 
 let mapInstance = null
-
-// 지도가 너무 축소되었는지 제어할 반응형 토글 변수 수립
 const isZoomTooFar = ref(false)
 
-// 카카오 커스텀 오버레이 원형 점 인스턴스 배열 구조 백업 저장소
 const mapMarkers = ref({
   cctv: [],
   securityLight: [],
   streetLight: [],
-  police: []
+  police: [] // ★ 치안안전시설 오버레이 배열 완비
 })
 
 const newComment = ref('')
@@ -247,8 +245,9 @@ const submitComment = () => {
   newComment.value = ''
 }
 
+// 🎯 [기능 동기화] 레이블에 '치안안전시설' 명시
 const getInfraLabel = (infra) => {
-  const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안시설' }
+  const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
   return labels[infra]
 }
 const getInfraColorClass = (infra) => {
@@ -256,7 +255,6 @@ const getInfraColorClass = (infra) => {
   return classes[infra]
 }
 
-// 지도가 너무 멀어지면 마커 소거 및 차단 가드 훅 추가
 const clearAllOverlaysOnMap = () => {
   Object.keys(mapMarkers.value).forEach(type => {
     mapMarkers.value[type].forEach(overlay => overlay.setMap(null))
@@ -266,8 +264,6 @@ const clearAllOverlaysOnMap = () => {
 
 const updateInfraMarkers = async (infraType) => {
   if (!mapInstance) return
-
-  // 안전 장치: 레벨 5 이상(숫자가 클수록 멀어짐)인 경우 백엔드 통신 차단 및 조기 반환(Guard Clause)
   if (mapInstance.getLevel() > 4) return
 
   mapMarkers.value[infraType].forEach(overlay => overlay.setMap(null))
@@ -311,7 +307,6 @@ const reloadAllActiveFilters = () => {
   })
 }
 
-// 필터 변경 추적 Watch
 watch(() => infraStore.filters, (newFilters) => {
   if (!mapInstance || mapInstance.getLevel() > 4) return
   Object.keys(newFilters).forEach(type => {
@@ -322,7 +317,6 @@ watch(() => infraStore.filters, (newFilters) => {
 const searchPlace = () => {
   if (!infraStore.searchKeyword.trim() || !mapInstance) return
 
-  // 장소 검색 시 필터는 일단 리셋 꺼짐 처리
   infraStore.filters.cctv = false
   infraStore.filters.securityLight = false
   infraStore.filters.streetLight = false
@@ -354,18 +348,16 @@ onMounted(async () => {
       mapInstance = new window.kakao.maps.Map(container, options)
       mapInstance.relayout()
 
-      // 마우스 휠 스크롤 즉시 감지하여 차단 여부를 토글하는 실시간 스캔 이벤트 연동
       window.kakao.maps.event.addListener(mapInstance, 'zoom_changed', () => {
         const currentLevel = mapInstance.getLevel()
-        if (currentLevel > 5) {
+        if (currentLevel > 4) {
           isZoomTooFar.value = true
-          clearAllOverlaysOnMap() // 레벨 초과 시 지도 위 모든 인프라 마커를 물리적 소거
+          clearAllOverlaysOnMap()
         } else {
           isZoomTooFar.value = false
         }
       })
 
-      // 지도 드래그 및 움직임 종료 이벤트 바인딩
       window.kakao.maps.event.addListener(mapInstance, 'idle', () => {
         const currentLevel = mapInstance.getLevel()
         if (currentLevel > 4) {
@@ -376,11 +368,10 @@ onMounted(async () => {
         
         isZoomTooFar.value = false
         const center = mapInstance.getCenter()
-        infraStore.updateCenter(center.getLat(), center.getLat())
-        reloadAllActiveFilters() // 허용 레벨일 때만 정상 로드
+        infraStore.updateCenter(center.getLat(), center.getLng())
+        reloadAllActiveFilters()
       })
 
-      // 최초 마운트 시 축척 유효성 검사 검사
       if (mapInstance.getLevel() > 4) {
         isZoomTooFar.value = true
       }
@@ -393,7 +384,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* 커스텀 마킹 원형 점 디자인 명세 */
 :deep(.infra-dot) {
   width: 14px;
   height: 14px;
@@ -414,12 +404,6 @@ onMounted(async () => {
 :deep(.streetLight-dot) { background-color: #FACC15; border-color: rgba(0, 0, 0, 0.3); }
 :deep(.police-dot) { background-color: #60A5FA; }
 
-/* 레이어 페이드인 페이드인 효과 */
-.animate-fade-in {
-  animation: fadeIn 0.25s ease-out forwards;
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+.pointer-events-none { pointer-events: none; }
+.pointer-events-auto { pointer-events: auto; }
 </style>

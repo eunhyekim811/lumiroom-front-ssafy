@@ -1,15 +1,27 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import http from '@/utils/axios';
+import http from '@/utils/axios'; // 인터셉터가 적용된 일반 API용 (자동 갱신용)
+import axios from 'axios';        // 인터셉터를 우회하기 위한 순수 axios (로그아웃용)
 
 export const useAuthStore = defineStore('auth', () => {
-  // 1. 상태(State) 초기화 - 기본값은 false 및 null로 안전하게 시작
+  // 1. 상태(State) 초기화
   const isLoggedIn = ref(false);
   const userProfile = ref(null);
 
-  // 2. JWT 토큰 해독 함수 (XSS 및 Null 데이터 철저 방어)
+  // JWT 토큰 만료 여부를 프론트엔드에서 자체 판별하는 함수
+  const isTokenExpired = (token) => {
+    if (!token) return true;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      // payload.exp는 초(sec) 단위이므로 1000을 곱해 밀리초 단위의 현재 시간과 비교
+      return (payload.exp * 1000) < Date.now();
+    } catch (e) {
+      return true;
+    }
+  };
+
+  // 2. JWT 토큰 해독 함수 (XSS 및 Null 방어)
   const decodeToken = (token) => {
-    // [관통의 핵심 패치]: 값이 아예 없거나, 문자열이 아니거나, JWT 규격(점 2개)이 아니면 split 자체를 시도 안 함!
     if (!token || typeof token !== 'string' || !token.includes('.')) {
       return null;
     }
@@ -19,7 +31,6 @@ export const useAuthStore = defineStore('auth', () => {
       if (parts.length < 3) return null;
 
       const payload = parts[1];
-      // 한글 닉네임 깨짐 방지를 위한 b64 안전 디코딩 디코딩
       const decodedPayload = JSON.parse(decodeURIComponent(atob(payload).split('').map(function(c) {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join('')));
@@ -36,25 +47,58 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  // 3. [관통의 안전화 구문]: 앱 구동 시 로컬 스토리지 데이터 검증 후 세션 복구
-  try {
-    const savedToken = localStorage.getItem('accessToken');
-    if (savedToken) {
-      const decoded = decodeToken(savedToken);
+  // 공통 세션 초기화 함수 (중복 제거)
+  const clearSession = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    isLoggedIn.value = false;
+    userProfile.value = null;
+  };
+
+  // 3. 앱 구동 시 세션 검증 및 자동 갱신
+  const restoreSession = async () => {
+    const accessToken = localStorage.getItem('accessToken');
+    const refreshToken = localStorage.getItem('refreshToken');
+
+    // Access Token 만료 전 -> 즉시 세션 복구
+    if (accessToken && !isTokenExpired(accessToken)) {
+      const decoded = decodeToken(accessToken);
       if (decoded) {
         isLoggedIn.value = true;
         userProfile.value = decoded;
       } else {
-        // 이상한 찌꺼기 데이터가 들어가 있으면 강제 청소
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
+        clearSession();
+      }
+    } 
+    // ② Access Token 만료 -> 즉시 갱신 시도!
+    else if (refreshToken) {
+      try {
+        // 인터셉터 무한 루프를 피하기 위해 순수 axios로 백엔드 갱신 요청
+        const response = await axios.post('http://localhost:8080/api/auth/refresh', {}, {
+          headers: { 'RefreshToken': refreshToken }
+        });
+
+        // 갱신 성공 시 새 토큰 장착
+        const newAccessToken = response.data.accessToken;
+        const newRefreshToken = response.data.refreshToken;
+
+        localStorage.setItem('accessToken', newAccessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+
+        isLoggedIn.value = true;
+        userProfile.value = decodeToken(newAccessToken);
+      } catch (error) {
+        // 백엔드에서 거절(RT 만료 등) 시에만 지갑(스토리지) 완전히 비우기
+        console.error('세션 갱신 실패 (리프레시 토큰 만료됨):', error);
+        clearSession();
       }
     }
-  } catch (e) {
-    console.error('로컬 스토리지 초기화 실패:', e);
-  }
+  };
 
-  // 4. 회원가입 비즈니스 로직
+  // 스토어가 생성될 때 즉시 복구/갱신 시나리오 실행
+  restoreSession();
+
+  // 4. 회원가입
   const signup = async (email, password, nickname) => {
     try {
       await http.post('/auth/signup', { email, password, nickname });
@@ -64,7 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  // 5. 로그인 비즈니스 로직
+  // 5. 로그인
   const login = async (email, password) => {
     try {
       const response = await http.post('/auth/login', { email, password });
@@ -81,18 +125,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  // 6. 로그아웃 비즈니스 로직
+  // 6. 로그아웃
   const logout = async () => {
     try {
-      await http.post('/auth/logout');
+      const refreshToken = localStorage.getItem('refreshToken');
+      const accessToken = localStorage.getItem('accessToken');
+      
+      const headers = {};
+      
+      // Access Token이 있고 만료 전 -> 백엔드 블랙리스트 등재용으로 보냄
+      if (accessToken && !isTokenExpired(accessToken)) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+      
+      // ② Refresh Token은 무조건 보냄 -> 백엔드 Redis에서 원천 파기용
+      if (refreshToken) {
+        headers['RefreshToken'] = refreshToken;
+      }
+
+      // 전송할 토큰이 하나라도 있다면 '순수 axios'로 전송하여 인터셉터(자동 갱신)를 회피!
+      if (Object.keys(headers).length > 0) {
+        await axios.post('http://localhost:8080/api/auth/logout', {}, { headers });
+      }
     } catch (error) {
-      console.error('서버 로그아웃 연동 실패:', error);
+      console.error('서버 로그아웃 처리 중 예외 (이미 파기되었을 수 있음)', error);
     } finally {
+      // API 성공/실패 여부와 관계없이 브라우저 데이터는 완벽히 제거
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       isLoggedIn.value = false;
       userProfile.value = null;
-      window.location.href = '/';
+      window.location.href = '/login';
     }
   };
 
