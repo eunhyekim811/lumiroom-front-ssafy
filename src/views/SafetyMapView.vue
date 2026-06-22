@@ -86,22 +86,33 @@
           <div v-else-if="propertyStore.propertiesList.length === 0" class="py-12 text-center text-sm font-bold text-gray-400">
             현재 범위에서 조회된 매물이 없습니다.
           </div>
+          
           <div 
             v-for="item in propertyStore.propertiesList" :key="item.id"
             @click="handlePropertySelect(item)"
-            class="bg-gray-50 border border-gray-200 hover:border-brand-point rounded-xl p-4 transition-all duration-200 cursor-pointer shadow-sm group hover:shadow-md"
+            class="bg-gray-50 border border-gray-200 hover:border-brand-point rounded-xl p-4 transition-all duration-200 cursor-pointer shadow-sm group hover:shadow-md relative"
           >
-            <div class="w-full aspect-[4/3] bg-gray-200 rounded-lg mb-3 relative overflow-hidden">
+            <button 
+              @click.stop="toggleFavoriteStatus(item.id)"
+              class="absolute top-6 right-6 z-30 p-2 rounded-full bg-white/95 shadow-md border border-gray-150 text-gray-400 hover:text-red-500 hover:scale-110 active:scale-95 transition-all"
+              title="관심 매물 토글"
+            >
+              <svg class="w-4 h-4" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+              </svg>
+            </button>
+
+            <div class="w-full h-44 bg-gray-200 rounded-lg mb-3 relative overflow-hidden">
               <img :src="getPropertyImage(item.type)" :alt="`${item.type} 매물 이미지`" class="w-full h-full object-cover">
               <div v-if="item.score != null" class="absolute top-2 left-2 px-2 py-1 rounded bg-white/90 border border-gray-200 text-[10px] font-bold text-brand-point">
-                안전도 {{ item.score }}점
+                ★ 안전도 {{ item.score }}점
               </div>
             </div>
             <div class="flex items-start justify-between">
               <div class="min-w-0 pr-3">
                 <h3 class="font-extrabold text-lg text-gray-900 group-hover:text-brand-point transition-colors truncate">{{ item.title }}</h3>
                 <p class="text-sm font-black text-gray-700 mt-1">{{ item.type }} · {{ item.price }}</p>
-                <p class="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed">{{ item.address }}</p>
+                <p class="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed truncate">{{ item.address }}</p>
               </div>
               <span v-if="item.grade" class="text-xs px-2 py-1 rounded font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap">
                 {{ item.grade }}등급
@@ -128,9 +139,26 @@
               <span v-if="propertyStore.selectedProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
                 LumiRoom 안심 {{ propertyStore.selectedProperty.grade }}등급
               </span>
-              <h1 class="text-3xl font-black text-gray-900 mt-3 leading-tight">
-                {{ propertyStore.selectedProperty.title }}
-              </h1>
+              
+              <div class="flex justify-between items-start gap-4">
+                <h1 class="text-2xl font-black text-gray-900 mt-3 leading-tight flex-grow">
+                  {{ propertyStore.selectedProperty.title }}
+                </h1>
+                
+                <button 
+                  @click="toggleFavoriteStatus(propertyStore.selectedProperty.id)"
+                  class="mt-3 p-2 rounded-xl border flex items-center justify-center gap-1.5 font-black text-xs transition-all active:scale-95 shadow-sm whitespace-nowrap"
+                  :class="favoritePropertyIds.includes(propertyStore.selectedProperty.id) 
+                    ? 'bg-red-50 border-red-200 text-red-500' 
+                    : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900'"
+                >
+                  <svg class="w-4 h-4" :class="{'fill-current': favoritePropertyIds.includes(propertyStore.selectedProperty.id)}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                  </svg>
+                  {{ favoritePropertyIds.includes(propertyStore.selectedProperty.id) ? '찜 해제' : '관심 등록' }}
+                </button>
+              </div>
+
               <p class="text-gray-700 text-sm mt-1.5 font-black">{{ propertyStore.selectedProperty.type }} · {{ propertyStore.selectedProperty.price }}</p>
               <p class="text-gray-400 text-sm mt-1 font-medium leading-relaxed">{{ propertyStore.selectedProperty.address }}</p>
             </div>
@@ -206,7 +234,6 @@
             </div>
 
             <div v-else-if="aiBriefing" class="bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border border-blue-200/80 rounded-2xl p-5 shadow-sm space-y-4">
-              
               <div class="flex justify-between items-center border-b border-blue-100 pb-3">
                 <div class="flex flex-col">
                   <span class="text-[10px] text-blue-500 font-black uppercase tracking-wider">LumiRoom Safety Report</span>
@@ -292,7 +319,7 @@
                 </p>
               </div>
 
-              <div class="text-xs text-gray-500 font-medium leading-relaxed bg-white border border-blue-50 p-3 rounded-xl">
+              <div class="text-nav-bg text-xs font-medium leading-relaxed bg-white border border-blue-50 p-3 rounded-xl">
                 <span class="font-black text-gray-700 block mb-1">🔍 정밀 안전 진단 총평:</span>
                 {{ aiBriefing.totalReview }}
               </div>
@@ -340,7 +367,6 @@
                   <div class="flex justify-between items-start mb-2">
                     <div class="flex flex-col gap-0.5">
                       <span class="text-gray-800 font-black">{{ comment.userName }}</span>
-                      
                       <div class="flex gap-0.5 mt-0.5">
                         <span 
                           v-for="star in 5" :key="'view-'+comment.id+'-'+star" 
@@ -353,7 +379,6 @@
                     </div>
                     <div class="flex items-center gap-2 text-gray-400">
                       <span class="text-[10px] font-medium">{{ comment.createdAt?.substring(0, 10) }}</span>
-                      
                       <button 
                         v-if="authStore.userProfile?.id === comment.userId"
                         @click="deleteComment(comment.id)"
@@ -365,7 +390,6 @@
                   </div>
                   <p class="text-gray-600 font-semibold leading-relaxed whitespace-pre-line">{{ comment.content }}</p>
                 </div>
-                
                 <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
                   등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
                 </div>
@@ -385,6 +409,7 @@ import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth' 
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
+import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
 
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
@@ -395,6 +420,40 @@ let debounceTimer = null
 const infraMarkerEntries = []
 const propertyMarkerEntries = []
 let activeInfraInfoWindow = null
+
+const favoritePropertyIds = ref([])
+
+const loadUserFavoritesFeed = async () => {
+  if (!authStore.isLoggedIn) return
+  try {
+    const favorites = await fetchMyFavorites()
+    favoritePropertyIds.value = favorites.map(f => f.propertyId)
+  } catch (error) {
+    console.error('관심 매물 상태를 갱신하지 못했습니다.', error)
+  }
+}
+
+const toggleFavoriteStatus = async (propertyId) => {
+  if (!authStore.isLoggedIn) {
+    alert('로그인 후 관심 매물 기능을 사용하실 수 있습니다.')
+    return
+  }
+
+  const isAlreadyFavorited = favoritePropertyIds.value.includes(propertyId)
+
+  try {
+    if (isAlreadyFavorited) {
+      await deleteFavorite(propertyId)
+      favoritePropertyIds.value = favoritePropertyIds.value.filter(id => id !== propertyId)
+    } else {
+      await addFavorite(propertyId)
+      favoritePropertyIds.value.push(propertyId)
+    }
+  } catch (error) {
+    console.error('관심 매물 처리 도중 에러 크래시:', error)
+    alert('관심 매물 처리 도중 오류가 발생했습니다.')
+  }
+}
 
 const getPropertyImage = (type) => {
   const images = {
@@ -593,7 +652,6 @@ const createInfoWindowContent = (item) => {
 
 const renderInfraMarkers = () => {
   if (!mapInstance || !window.kakao?.maps) return
-
   clearInfraMarkers()
 
   infraStore.infraItems.forEach((item) => {
@@ -647,7 +705,6 @@ const handlePropertySelect = (property) => {
 
 const renderPropertyMarkers = () => {
   if (!mapInstance || !window.kakao?.maps) return
-
   clearPropertyMarkers()
   const markerImage = createPropertyMarkerImage()
 
@@ -719,6 +776,8 @@ const searchPlace = () => {
 }
 
 onMounted(() => {
+  propertyStore.clearSelection();
+
   if (window.kakao && window.kakao.maps) {
     window.kakao.maps.load(() => {
       const container = document.getElementById('kakao-map')
@@ -731,6 +790,8 @@ onMounted(() => {
       window.kakao.maps.event.addListener(mapInstance, 'idle', debounceLoadMapData)
       loadMapDataByCurrentCenter()
       if (infraStore.searchKeyword) searchPlace()
+      
+      loadUserFavoritesFeed()
     })
   }
 })
@@ -768,8 +829,6 @@ onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
   clearInfraMarkers()
   clearPropertyMarkers()
-  
-  // 다른 페이지로 이동 시 매물 상세 뷰를 목록 뷰로 초기화!
   propertyStore.clearSelection() 
 })
 </script>
