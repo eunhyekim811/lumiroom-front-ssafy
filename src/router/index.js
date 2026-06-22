@@ -41,6 +41,12 @@ const router = createRouter({
       name: 'property-detail',
       component: () => import('@/views/PropertyDetailView.vue'),
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/mypage',
+      name: 'mypage',
+      component: () => import('@/views/MyPageView.vue'),
+      meta: { requiresAuth: true } 
     }
   ]
 })

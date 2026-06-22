@@ -14,9 +14,15 @@
 
     <div class="flex items-center space-x-4">
       <template v-if="authStore.isLoggedIn">
-        <span class="text-sm font-bold text-gray-300">
-          <span class="text-brand-point font-black">{{ authStore.userProfile?.name }}</span>님 환영합니다
-        </span>
+
+        <router-link 
+          to="/mypage" 
+          class="text-sm font-bold text-gray-300 hover:text-white transition-colors flex items-center cursor-pointer group"
+          title="마이페이지"
+        >
+          <span class="text-brand-point font-black group-hover:underline">{{ authStore.userProfile?.name }}</span>님 환영합니다
+        </router-link>
+
         <button @click="authStore.logout()" class="text-xs bg-gray-800 text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg font-bold hover:text-white transition-colors">
           로그아웃
         </button>
