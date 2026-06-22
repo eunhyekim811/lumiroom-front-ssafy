@@ -92,11 +92,7 @@
             class="bg-gray-50 border border-gray-200 hover:border-brand-point rounded-xl p-4 transition-all duration-200 cursor-pointer shadow-sm group hover:shadow-md"
           >
             <div class="w-full aspect-[4/3] bg-gray-200 rounded-lg mb-3 relative overflow-hidden">
-              <img
-                :src="getPropertyImage(item.type)"
-                :alt="`${item.type} 매물 이미지`"
-                class="w-full h-full object-cover"
-              >
+              <img :src="getPropertyImage(item.type)" :alt="`${item.type} 매물 이미지`" class="w-full h-full object-cover">
               <div v-if="item.score != null" class="absolute top-2 left-2 px-2 py-1 rounded bg-white/90 border border-gray-200 text-[10px] font-bold text-brand-point">
                 안전도 {{ item.score }}점
               </div>
@@ -172,10 +168,155 @@
             </table>
           </div>
 
+          <div class="pt-4 border-t border-gray-200">
+            <h3 class="text-sm font-extrabold text-gray-900 mb-3 flex items-center gap-2">
+              <span class="w-1.5 h-3 bg-blue-500 rounded-sm"></span>LumiRoom AI 지능형 안전 리포트
+            </h3>
+
+            <div v-if="!aiBriefing && !isBriefingLoading" class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center shadow-sm">
+              <p class="text-xs text-blue-900 font-semibold mb-3 leading-relaxed">
+                매물 반경 1,000m 이내 수집된 공공 CCTV, 가로등, 안심보안등 및 치안안전시설 분포 데이터를 기반으로 지능형 종합 치안 리포트를 생성합니다.
+              </p>
+              <button 
+                @click="loadAiBriefing" 
+                class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition transform active:scale-95 flex items-center justify-center gap-2"
+              >
+                AI 안심 브리핑 분석서 생성
+              </button>
+            </div>
+
+            <div v-else-if="isBriefingLoading" class="bg-gray-50 border border-gray-200 rounded-2xl p-5 space-y-4 animate-pulse">
+              <div class="flex justify-between items-center">
+                <div class="h-4 bg-gray-300 rounded w-1/3"></div>
+                <div class="h-6 bg-gray-300 rounded-full w-16"></div>
+              </div>
+              <div class="h-10 bg-gray-200 rounded w-full"></div>
+              <div class="space-y-2">
+                <div class="h-3 bg-gray-200 rounded w-5/6"></div>
+                <div class="h-3 bg-gray-200 rounded w-4/5"></div>
+              </div>
+              <p class="text-[11px] text-center font-bold text-blue-500 animate-bounce">
+                치안인프라 공간 데이터 수집 및 안심 리포트 작성 중...
+              </p>
+            </div>
+
+            <div v-else-if="briefingError" class="p-4 bg-red-50 border border-red-200 rounded-2xl text-xs text-red-600 font-bold">
+              <p class="mb-2">⚠️ {{ briefingError }}</p>
+              <button @click="loadAiBriefing" class="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">재시도</button>
+            </div>
+
+            <div v-else-if="aiBriefing" class="bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border border-blue-200/80 rounded-2xl p-5 shadow-sm space-y-4">
+              
+              <div class="flex justify-between items-center border-b border-blue-100 pb-3">
+                <div class="flex flex-col">
+                  <span class="text-[10px] text-blue-500 font-black uppercase tracking-wider">LumiRoom Safety Report</span>
+                  <span class="text-sm font-black text-gray-900">종합 공간 치안 분석</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-2xl font-black text-blue-600">{{ aiBriefing.safetyScore }}점</span>
+                  <span 
+                    :class="{
+                      'bg-emerald-100 text-emerald-800 border-emerald-200': aiBriefing.safetyGrade === 'A',
+                      'bg-blue-100 text-blue-800 border-blue-200': aiBriefing.safetyGrade === 'B',
+                      'bg-amber-100 text-yellow-800 border-yellow-200': aiBriefing.safetyGrade === 'C',
+                      'bg-red-100 text-red-800 border-red-200': aiBriefing.safetyGrade === 'D',
+                    }"
+                    class="px-2.5 py-1 text-xs font-black rounded-lg border"
+                  >
+                    등급 {{ aiBriefing.safetyGrade }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-4 gap-1.5 bg-white p-3 rounded-xl border border-blue-100/50 shadow-inner">
+                <div class="text-center">
+                  <span class="text-[9px] text-gray-400 font-bold block">CCTV</span>
+                  <span class="text-xs font-black text-red-500">{{ aiBriefing.cctvCount }}대</span>
+                </div>
+                <div class="text-center">
+                  <span class="text-[9px] text-gray-400 font-bold block">가로등</span>
+                  <span class="text-xs font-black text-yellow-500">{{ aiBriefing.streetLightCount }}개</span>
+                </div>
+                <div class="text-center">
+                  <span class="text-[9px] text-gray-400 font-bold block">보안등</span>
+                  <span class="text-xs font-black text-orange-500">{{ aiBriefing.securityLightCount }}개</span>
+                </div>
+                <div class="text-center">
+                  <span class="text-[9px] text-gray-400 font-bold block">치안시설</span>
+                  <span class="text-xs font-black text-blue-500">{{ aiBriefing.policeStationCount }}개</span>
+                </div>
+              </div>
+
+              <div class="bg-blue-500 text-white rounded-xl p-3 shadow-md relative">
+                <p class="text-xs font-bold leading-relaxed">
+                  📢 {{ aiBriefing.oneLineSummary }}
+                </p>
+              </div>
+
+              <div v-if="aiBriefing.positivePoints && aiBriefing.positivePoints.length > 0">
+                <h4 class="text-xs font-extrabold text-emerald-700 flex items-center gap-1.5 mb-1.5">
+                  <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>안심 안전 우수 요인
+                </h4>
+                <ul class="space-y-1 pl-1">
+                  <li 
+                    v-for="(point, idx) in aiBriefing.positivePoints" :key="'pos-'+idx"
+                    class="text-xs text-gray-700 font-semibold leading-relaxed flex items-start gap-1.5"
+                  >
+                    <span class="text-emerald-500 text-xs">✓</span>
+                    <span>{{ point }}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div v-if="aiBriefing.warningPoints && aiBriefing.warningPoints.length > 0">
+                <h4 class="text-xs font-extrabold text-red-600 flex items-center gap-1.5 mb-1.5">
+                  <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>야간 보행 주의 요인
+                </h4>
+                <ul class="space-y-1 pl-1">
+                  <li 
+                    v-for="(point, idx) in aiBriefing.warningPoints" :key="'warn-'+idx"
+                    class="text-xs text-gray-700 font-semibold leading-relaxed flex items-start gap-1.5"
+                  >
+                    <span class="text-red-500 text-xs">⚠</span>
+                    <span>{{ point }}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
+                <h5 class="text-xs font-extrabold text-yellow-800 mb-1 flex items-center gap-1">
+                  🌙 심야 시간대 안심 도보 조언
+                </h5>
+                <p class="text-xs text-gray-600 leading-relaxed font-semibold">
+                  {{ aiBriefing.nightWalkingAdvice }}
+                </p>
+              </div>
+
+              <div class="text-xs text-gray-500 font-medium leading-relaxed bg-white border border-blue-50 p-3 rounded-xl">
+                <span class="font-black text-gray-700 block mb-1">🔍 정밀 안전 진단 총평:</span>
+                {{ aiBriefing.totalReview }}
+              </div>
+            </div>
+          </div>
+
           <div class="pt-2 border-t border-gray-200">
             <h3 class="text-sm font-extrabold text-gray-900 mb-3 flex items-center gap-2">
               <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>실거주 체감 치안 리뷰
             </h3>
+
+            <div class="flex items-center gap-2 mb-2 px-1">
+              <span class="text-xs font-bold text-gray-600">별점 평가</span>
+              <div class="flex gap-1">
+                <button 
+                  v-for="star in 5" :key="'input-'+star"
+                  @click="newRating = star"
+                  class="text-xl focus:outline-none hover:scale-110 transition-transform"
+                  :class="star <= newRating ? 'text-yellow-400 drop-shadow-[0_0_2px_rgba(250,204,21,0.5)]' : 'text-gray-200'"
+                >
+                  ★
+                </button>
+              </div>
+            </div>
 
             <div class="flex gap-2 mb-4">
               <input 
@@ -191,16 +332,44 @@
             </div>
 
             <div class="space-y-2.5 max-h-52 overflow-y-auto pr-1">
-              <div v-for="comment in comments" :key="comment.id" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs shadow-sm">
-                <div class="flex justify-between items-center mb-1 font-bold text-gray-400">
-                  <span class="text-gray-800 font-black">{{ comment.userName }}</span>
-                  <span class="text-[10px] font-medium">{{ comment.date }}</span>
+              <div v-if="isReviewLoading" class="text-center py-6 text-gray-400 text-xs font-bold">
+                리뷰를 불러오는 중입니다...
+              </div>
+              <template v-else>
+                <div v-for="comment in comments" :key="comment.id" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs shadow-sm group">
+                  <div class="flex justify-between items-start mb-2">
+                    <div class="flex flex-col gap-0.5">
+                      <span class="text-gray-800 font-black">{{ comment.userName }}</span>
+                      
+                      <div class="flex gap-0.5 mt-0.5">
+                        <span 
+                          v-for="star in 5" :key="'view-'+comment.id+'-'+star" 
+                          class="text-[12px]" 
+                          :class="star <= comment.rating ? 'text-yellow-400' : 'text-gray-200'"
+                        >
+                          ★
+                        </span>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 text-gray-400">
+                      <span class="text-[10px] font-medium">{{ comment.createdAt?.substring(0, 10) }}</span>
+                      
+                      <button 
+                        v-if="authStore.userProfile?.id === comment.userId"
+                        @click="deleteComment(comment.id)"
+                        class="text-red-500 hover:text-red-700 text-[10px] font-black transition-colors"
+                      >
+                        삭제
+                      </button>
+                    </div>
+                  </div>
+                  <p class="text-gray-600 font-semibold leading-relaxed whitespace-pre-line">{{ comment.content }}</p>
                 </div>
-                <p class="text-gray-600 font-semibold leading-relaxed">{{ comment.content }}</p>
-              </div>
-              <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
-                등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
-              </div>
+                
+                <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
+                  등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -213,9 +382,13 @@
 import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
+import { useAuthStore } from '@/stores/auth' 
+import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
+import { fetchAiBriefing } from '@/api/ai'
 
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
+const authStore = useAuthStore()
 
 let mapInstance = null
 let debounceTimer = null
@@ -229,7 +402,6 @@ const getPropertyImage = (type) => {
     연립다세대: '/images/multi-family-house.jpg',
     단독다가구: '/images/house.jpg'
   }
-
   return images[type] || '/images/default.jpg'
 }
 
@@ -237,22 +409,105 @@ const selectedFilterCount = computed(() => {
   return Object.values(infraStore.filters).filter(Boolean).length
 })
 
+// ==========================================
+// 리뷰 로직
+// ==========================================
 const newComment = ref('')
-const comments = ref([
-  { id: 1, userName: '안심방랑자', date: '2026-06-09', content: '여기 저녁에 직접 가봤는데 대로변에서 골목 진입하자마자 고광도 보안등이 켜져 있어서 되게 밝아요.' },
-  { id: 2, userName: '신림원주민', date: '2026-06-08', content: '반경 내에 지구대가 가깝다 보니 경찰 순찰차가 수시로 돌아서 안심하고 거주할 수 있습니다.' }
-])
+const newRating = ref(5) 
+const comments = ref([])
+const isReviewLoading = ref(false)
 
-const submitComment = () => {
-  if (!newComment.value.trim()) return
-  comments.value.unshift({
-    id: Date.now(),
-    userName: '익명의 탐색자',
-    date: new Date().toISOString().split('T')[0],
-    content: newComment.value
-  })
-  newComment.value = ''
+const loadReviews = async (propertyId) => {
+  if (!propertyId) return
+  isReviewLoading.value = true
+  try {
+    comments.value = await fetchReviews(propertyId)
+  } catch (error) {
+    console.error('리뷰 목록 조회 실패:', error)
+  } finally {
+    isReviewLoading.value = false
+  }
 }
+
+const submitComment = async () => {
+  if (!newComment.value.trim()) return
+  
+  if (!authStore.isLoggedIn) {
+    alert('로그인 후 이용할 수 있습니다.')
+    return
+  }
+
+  const propertyId = propertyStore.selectedProperty?.id
+  if (!propertyId) return
+
+  try {
+    await createPropertyReview({
+      propertyId: propertyId,
+      content: newComment.value,
+      rating: newRating.value 
+    })
+    newComment.value = '' 
+    newRating.value = 5   
+    await loadReviews(propertyId)
+  } catch (error) {
+    console.error('리뷰 등록 실패:', error)
+    alert('리뷰 등록에 실패했습니다.')
+  }
+}
+
+const deleteComment = async (reviewId) => {
+  if (!confirm('이 리뷰를 삭제하시겠습니까?')) return
+  
+  try {
+    await deletePropertyReview(reviewId)
+    await loadReviews(propertyStore.selectedProperty.id)
+  } catch (error) {
+    console.error('리뷰 삭제 실패:', error)
+    alert('본인이 작성한 리뷰만 삭제할 수 있습니다.')
+  }
+}
+
+// ==========================================
+// AI 브리핑 로직
+// ==========================================
+const aiBriefing = ref(null)
+const isBriefingLoading = ref(false)
+const briefingError = ref(null)
+
+const loadAiBriefing = async () => {
+  const property = propertyStore.selectedProperty
+  if (!property || !property.lat || !property.lng) return
+
+  isBriefingLoading.value = true
+  briefingError.value = null
+  
+  try {
+    const data = await fetchAiBriefing(property.lat, property.lng)
+    aiBriefing.value = data
+  } catch (error) {
+    console.error('LumiRoom AI 안심 브리핑 연동 실패:', error)
+    briefingError.value = '안심 안전 브리핑 분석서 추출 중 예외가 발생했습니다.'
+  } finally {
+    isBriefingLoading.value = false
+  }
+}
+
+watch(
+  () => propertyStore.selectedProperty,
+  (newProperty) => {
+    newComment.value = '' 
+    newRating.value = 5   
+    
+    aiBriefing.value = null 
+    briefingError.value = null
+    
+    if (newProperty && newProperty.id) {
+      loadReviews(newProperty.id)
+    } else {
+      comments.value = []
+    }
+  }
+)
 
 const getInfraLabel = (infra) => {
   const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
@@ -513,5 +768,8 @@ onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
   clearInfraMarkers()
   clearPropertyMarkers()
+  
+  // 다른 페이지로 이동 시 매물 상세 뷰를 목록 뷰로 초기화!
+  propertyStore.clearSelection() 
 })
 </script>
