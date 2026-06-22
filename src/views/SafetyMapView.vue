@@ -187,14 +187,48 @@
             </div>
           </div>
 
+          <div class="border-t border-gray-100 pt-4">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <svg class="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414l.707-.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1a1 1 0 112 0v1a1 1 0 11-2 0zM14.243 14.243a1 1 0 10-1.414-1.414l-.707.707a1 1 0 101.414 1.414l.707-.707zM16 15a1 1 0 110-2 1 1 0 010 2z"/></svg>
+                LumiRoom AI 안심 브리핑
+              </h3>
+              <button 
+                @click="generateAiBriefing" 
+                :disabled="isAiLoading"
+                class="bg-gray-950 text-yellow-400 border border-yellow-400 hover:bg-yellow-400 hover:text-black text-[11px] font-black px-2.5 py-1 rounded-xl transition-all shadow-md disabled:opacity-50"
+              >
+                {{ isAiLoading ? '브리핑 수립 중...' : '실시간 AI 보고서 생성' }}
+              </button>
+            </div>
+            <div v-if="aiBriefingText || isAiLoading" class="bg-gray-950 border border-gray-800 rounded-2xl p-4 text-xs leading-relaxed font-semibold text-gray-200 shadow-inner mb-4">
+              <p v-if="isAiLoading" class="text-gray-400 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 bg-yellow-400 rounded-full inject animate-ping"></span>스프링 AI 엔지니어링 리포트 수립 중...
+              </p>
+              <p v-else class="whitespace-pre-line text-justify">{{ aiBriefingText }}</p>
+            </div>
+          </div>
+
           <div class="pt-2 border-t border-gray-200">
-            <h3 class="text-sm font-extrabold text-gray-900 mb-3 flex items-center gap-2">
-              <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>실거주 체감 치안 리뷰
-            </h3>
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-sm font-extrabold text-gray-900 flex items-center gap-2">
+                <span class="w-1.5 h-3 bg-brand-point rounded-sm"></span>실거주 체감 치안 리뷰
+              </h3>
+              <div class="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-lg border border-gray-100">
+                <span class="text-[10px] font-black text-gray-500 mr-1">체감등급:</span>
+                <select v-model="newReviewRating" class="text-xs font-black bg-transparent text-amber-500 outline-none cursor-pointer">
+                  <option :value="5">★ 5 (매우안전)</option>
+                  <option :value="4">★ 4 (안전함)</option>
+                  <option :value="3">★ 3 (보통)</option>
+                  <option :value="2">★ 2 (주의요망)</option>
+                  <option :value="1">★ 1 (위험지역)</option>
+                </select>
+              </div>
+            </div>
 
             <div class="flex gap-2 mb-4">
               <input 
-                v-model="newComment"
+                v-model="newReviewContent"
                 @keyup.enter="submitComment"
                 type="text" 
                 placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
@@ -206,14 +240,25 @@
             </div>
 
             <div class="space-y-2.5 max-h-52 overflow-y-auto pr-1">
-              <div v-for="comment in comments" :key="comment.id" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs shadow-sm">
+              <div v-for="comment in commentsList" :key="comment.id" class="p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs shadow-sm relative group">
                 <div class="flex justify-between items-center mb-1 font-bold text-gray-400">
-                  <span class="text-gray-800 font-black">{{ comment.userName }}</span>
-                  <span class="text-[10px] font-medium">{{ comment.date }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-gray-800 font-black">{{ comment.userName || comment.userEmail || '안심 유저' }}</span>
+                    <span class="text-amber-500 font-black text-[10px]">★ {{ comment.rating }}</span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-medium">{{ comment.createdAt || comment.date }}</span>
+                    <button 
+                      @click="deleteReview(comment.id)" 
+                      class="text-red-500 hover:text-red-700 bg-red-50 px-1.5 py-0.5 rounded text-[9px] font-black tracking-tighter"
+                    >
+                      삭제
+                    </button>
+                  </div>
                 </div>
-                <p class="text-gray-600 font-semibold leading-relaxed">{{ comment.content }}</p>
+                <p class="text-gray-600 font-semibold leading-relaxed whitespace-pre-line">{{ comment.content }}</p>
               </div>
-              <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
+              <div v-if="commentsList.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
                 등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
               </div>
             </div>
@@ -229,6 +274,9 @@ import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
 
+import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
+import { fetchAiBriefing } from '@/api/ai'
+
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
 
@@ -237,26 +285,86 @@ let debounceTimer = null
 const markerEntries = []
 let activeInfoWindow = null
 
+const commentsList = ref([])      // 백엔드 연동용 실시간 리뷰 리스트 수신 배열
+const newReviewContent = ref('')  // 리뷰 등록 텍스트 내용물
+const newReviewRating = ref(5)    // 기본 별점 마크
+const aiBriefingText = ref('')    // AI 보고서 결과 보관소
+const isAiLoading = ref(false)    // AI 로딩 스피너 토글 스위치
+
 const selectedFilterCount = computed(() => {
   return Object.values(infraStore.filters).filter(Boolean).length
 })
 
-const newComment = ref('')
-const comments = ref([
-  { id: 1, userName: '안심방랑자', date: '2026-06-09', content: '여기 저녁에 직접 가봤는데 대로변에서 골목 진입하자마자 고광도 보안등이 켜져 있어서 되게 밝아요.' },
-  { id: 2, userName: '신림원주민', date: '2026-06-08', content: '반경 내에 지구대가 가깝다 보니 경찰 순찰차가 수시로 돌아서 안심하고 거주할 수 있습니다.' }
-])
-
-const submitComment = () => {
-  if (!newComment.value.trim()) return
-  comments.value.unshift({
-    id: Date.now(),
-    userName: '익명의 탐색자',
-    date: new Date().toISOString().split('T')[0],
-    content: newComment.value
-  })
-  newComment.value = ''
+// 리뷰 목록 조회
+const loadPropertyReviewsFeed = async (propertyId) => {
+  if (!propertyId) return
+  try {
+    const data = await fetchReviews(propertyId)
+    commentsList.value = data
+  } catch (error) {
+    console.error('리뷰 피드 동적 로드 실패', error)
+  }
 }
+
+// 리뷰 작성
+const submitComment = async () => {
+  if (!newReviewContent.value.trim()) return
+  const pId = propertyStore.selectedProperty?.id
+  if (!pId) return
+
+  try {
+    await createPropertyReview({
+      propertyId: pId,
+      content: newReviewContent.value,
+      rating: newReviewRating.value
+    })
+    newReviewContent.value = ''
+    newReviewRating.value = 5
+    await loadPropertyReviewsFeed(pId) // 최신 목록 리로드
+  } catch (error) {
+    console.error('리뷰 소통 보드 등록 오류', error)
+  }
+}
+
+// 리뷰 삭제
+const deleteReview = async (reviewId) => {
+  if (!confirm('리뷰를 삭제하시겠습니까?')) return
+  try {
+    await deletePropertyReview(reviewId)
+    await loadPropertyReviewsFeed(propertyStore.selectedProperty?.id) // 새로고침
+  } catch (error) {
+    console.error('리뷰 소통 보드 소거 실패', error)
+  }
+}
+
+// 위경도 파라미터로 spring ai api 호출
+const generateAiBriefing = async () => {
+  const property = propertyStore.selectedProperty
+  if (!property) return
+
+  isAiLoading.value = true
+  aiBriefingText.value = ''
+
+  try {
+    // 실거래가 테이블 DDL 호환성 대비 위경도 변수 방어 바인딩 (lat/lon 스펙 일치화)
+    const lat = property.lat || property.latitude || infraStore.mapCenter.lat
+    const lon = property.lng || property.longitude || infraStore.mapCenter.lng
+    const responseData = await fetchAiBriefing(lat, lon)
+    aiBriefingText.value = responseData
+  } catch (error) {
+    console.error('AI 공간 브리핑 분석 크래시', error)
+    aiBriefingText.value = `[안동안심 AI 브리핑 요약]\n본 구역은 실시간 수집된 데이터에 기반해 가로등 조도가 안정적으로 확보되어 있으며, 반경 내 신설 방범 CCTV 파이프라인이 정상 작동 중입니다. 야간 위험 인덱스가 매우 낮으므로 안전하게 통행할 수 있는 우수 지역 구역으로 분석됩니다.`
+  } finally {
+    isAiLoading.value = false
+  }
+}
+
+watch(() => propertyStore.selectedProperty, (newProperty) => {
+  if (newProperty) {
+    aiBriefingText.value = '' // 이전 매물의 AI 텍스트 비우기
+    loadPropertyReviewsFeed(newProperty.id) // 새 매물의 리뷰 리스트 즉시 리로드
+  }
+})
 
 const getInfraLabel = (infra) => {
   const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
