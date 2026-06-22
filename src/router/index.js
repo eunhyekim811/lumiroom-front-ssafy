@@ -33,15 +33,26 @@ const router = createRouter({
     {
       path: '/properties',
       name: 'properties',
-      // 매물 찾기/상세 화면
+      component: () => import('@/views/PropertiesView.vue'), 
+      meta: { requiresAuth: true } 
+    },
+    {
+      path: '/properties/:id',
+      name: 'property-detail',
       component: () => import('@/views/PropertyDetailView.vue'),
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/mypage',
+      name: 'mypage',
+      component: () => import('@/views/MyPageView.vue'),
       meta: { requiresAuth: true } 
     }
   ]
 })
 
 // 전역 네비게이션 가드 (화면을 이동하기 직전에 항상 실행되는 검문소)
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // 스토어는 반드시 라우터 가드(beforeEach) "내부"에서 선언해야 에러가 나지 않습니다.
   const authStore = useAuthStore()
 
@@ -50,7 +61,15 @@ router.beforeEach((to, from, next) => {
     alert('로그인이 필요한 서비스입니다.')
     next('/login') // 목적지로 안 보내고 로그인 페이지로 강제 연행
   } else {
-    next() // 무사 통과 (원래 가려던 곳으로 이동)
+    if (authStore.isLoggedIn && !authStore.userProfile?.name) {
+      try {
+        // 💡 중요: 라우팅 완료(next) 전에 유저 데이터를 무조건 확보하므로 상단바 유저명이 절대 사라지지 않습니다!
+        await authStore.fetchMyProfile() 
+      } catch (error) {
+        console.error('라우터 검문소 내 프로필 선제 수신 실패:', error)
+      }
+    }
+    next()
   }
 })
 

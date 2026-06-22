@@ -35,10 +35,10 @@ export const useAuthStore = defineStore('auth', () => {
         return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
       }).join('')));
       
-      const fallbackName = decodedPayload.sub ? decodedPayload.sub.split('@')[0] : '사용자';
+      // const fallbackName = decodedPayload.sub ? decodedPayload.sub.split('@')[0] : '사용자';
       
       return { 
-        name: decodedPayload.nickname || fallbackName,
+        email: decodedPayload.sub, 
         role: decodedPayload.role 
       };
     } catch (error) {
@@ -65,7 +65,8 @@ export const useAuthStore = defineStore('auth', () => {
       const decoded = decodeToken(accessToken);
       if (decoded) {
         isLoggedIn.value = true;
-        userProfile.value = decoded;
+        // userProfile.value = decoded;
+        userProfile.value = { email: decoded.email, role: decoded.role, name: '' };
       } else {
         clearSession();
       }
@@ -86,7 +87,9 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('refreshToken', newRefreshToken);
 
         isLoggedIn.value = true;
-        userProfile.value = decodeToken(newAccessToken);
+        // userProfile.value = decodeToken(newAccessToken);
+        const decoded = decodeToken(newAccessToken);
+        userProfile.value = { email: decoded.email, role: decoded.role, name: '' };
       } catch (error) {
         // 백엔드에서 거절(RT 만료 등) 시에만 지갑(스토리지) 완전히 비우기
         console.error('세션 갱신 실패 (리프레시 토큰 만료됨):', error);
@@ -118,7 +121,8 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('refreshToken', refreshToken);
       
       isLoggedIn.value = true;
-      userProfile.value = decodeToken(accessToken); 
+      // userProfile.value = decodeToken(accessToken); 
+      await fetchMyProfile();
       return true;
     } catch (error) {
       throw error.response?.data || '로그인에 실패했습니다.';
@@ -159,5 +163,20 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  return { isLoggedIn, userProfile, signup, login, logout };
+  // 내 프로필 상세 정보 조회 API 연동
+  const fetchMyProfile = async () => {
+    try {
+      // 자동 갱신 인터셉터가 적용된 http 객체를 사용하여 안전하게 호출!
+      const response = await http.get('/users/me');
+      
+      // 유저의 전체 정보(id, email, nickname 등)를 상태에 장착
+      userProfile.value = response.data;
+      return response.data;
+    } catch (error) {
+      console.error('내 프로필 로드 실패:', error);
+      throw error;
+    }
+  };
+
+  return { isLoggedIn, userProfile, signup, login, logout, fetchMyProfile };
 });
