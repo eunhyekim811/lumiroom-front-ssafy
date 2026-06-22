@@ -11,12 +11,30 @@
             <span v-if="currentProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
               LumiRoom 안심 {{ currentProperty.grade }}등급 매물
             </span>
-            <h1 class="text-4xl font-black text-gray-900 mt-3 leading-tight">
-              {{ currentProperty.title }}
-            </h1>
-            <p class="text-gray-700 text-base mt-1.5 font-black">{{ currentProperty.type }} · {{ currentProperty.price }}</p>
+            
+            <div class="flex flex-wrap items-center gap-4 mt-3">
+              <h1 class="text-4xl font-black text-gray-900 leading-tight">
+                {{ currentProperty.title }}
+              </h1>
+              
+              <button 
+                @click="toggleFavoriteStatus(currentProperty.id)"
+                class="p-2.5 rounded-xl border flex items-center justify-center gap-1.5 font-black text-xs transition-all active:scale-95 shadow-sm whitespace-nowrap h-11 mt-1"
+                :class="favoritePropertyIds.includes(currentProperty.id) 
+                  ? 'bg-red-50 border-red-200 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.15)]' 
+                  : 'bg-gray-50 border-gray-200 text-gray-500 hover:text-gray-900'"
+              >
+                <svg class="w-4 h-4" :class="{'fill-current': favoritePropertyIds.includes(currentProperty.id)}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
+                </svg>
+                {{ favoritePropertyIds.includes(currentProperty.id) ? '찜 해제' : '관심 등록' }}
+              </button>
+            </div>
+
+            <p class="text-gray-700 text-base mt-2.5 font-black">{{ currentProperty.type }} · {{ currentProperty.price }}</p>
             <p class="text-gray-400 text-sm mt-1 font-medium leading-relaxed">{{ currentProperty.address }}</p>
           </div>
+          
           <div v-if="currentProperty.score != null" class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-center sm:min-w-[150px] shadow-sm">
             <span class="text-xs text-gray-400 font-bold block mb-1">인프라 매칭 안전도</span>
             <span class="text-3xl font-black text-brand-point drop-shadow-[0_0_4px_rgba(250,204,21,0.3)]">
@@ -107,12 +125,12 @@
             </p>
           </div>
 
-          <div v-else-if="briefingError" class="p-6 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-600 font-bold text-center">
+          <div class="p-6 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-600 font-bold text-center" v-else-if="briefingError">
             <p class="mb-3">⚠️ {{ briefingError }}</p>
             <button @click="loadAiBriefing" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">재시도</button>
           </div>
 
-          <div v-else-if="aiBriefing" class="bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border border-blue-200/80 rounded-3xl p-6 shadow-sm space-y-5">
+          <div class="bg-gradient-to-br from-blue-50/70 to-indigo-50/40 border border-blue-200/80 rounded-3xl p-6 shadow-sm space-y-5" v-else-if="aiBriefing">
             <div class="flex justify-between items-center border-b border-blue-100 pb-4">
               <div class="flex flex-col">
                 <span class="text-xs text-blue-500 font-black uppercase tracking-wider mb-1">LumiRoom Safety Report</span>
@@ -296,18 +314,56 @@ import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
 
+// 1. 분리 전담 모듈 api/favorites.js 기능 함수 일괄 바인딩 유도
+import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
+
 const route = useRoute()
 const propertyStore = usePropertyStore()
 const authStore = useAuthStore()
 
-// 1. 매물 기본 데이터 로딩
 const targetId = parseInt(route.params.id)
 const currentProperty = ref(
   propertyStore.propertiesList.find(p => p.id === targetId) || propertyStore.propertiesList[0]
 )
 
+// 2. 유저가 찜해놓은 관심매물 고유 Id 상태 배열 정의
+const favoritePropertyIds = ref([])
+
+// 3. 백엔드 관심 매물 목록 리스트 소환 및 보관 함수 연동
+const loadUserFavorites = async () => {
+  if (!authStore.isLoggedIn) return
+  try {
+    const favorites = await fetchMyFavorites()
+    favoritePropertyIds.value = favorites.map(f => f.propertyId)
+  } catch (error) {
+    console.error('마이 리스트 관심 갱신 실패:', error)
+  }
+}
+
+// 4. 관심등록 스왑 토글 액션 핸들러 빌드 (POST/DELETE 분기 통합 완결)
+const toggleFavoriteStatus = async (propertyId) => {
+  if (!authStore.isLoggedIn) {
+    alert('로그인 후 관심 매물 기능을 이용하실 수 있습니다.')
+    return
+  }
+  
+  const isFavorited = favoritePropertyIds.value.includes(propertyId)
+  try {
+    if (isFavorited) {
+      await deleteFavorite(propertyId)
+      favoritePropertyIds.value = favoritePropertyIds.value.filter(id => id !== propertyId)
+    } else {
+      await addFavorite(propertyId)
+      favoritePropertyIds.value.push(propertyId)
+    }
+  } catch (error) {
+    console.error('상세화면 관심 매물 토글 오류:', error)
+    alert('관심 매물 처리 도중 오류가 발생했습니다.')
+  }
+}
+
 // ==========================================
-// 2. 리뷰 로직 통합
+// 리뷰 로직 통합
 // ==========================================
 const newComment = ref('')
 const newRating = ref(5) 
@@ -390,7 +446,7 @@ const loadAiBriefing = async () => {
 }
 
 // ==========================================
-// 💡 포맷터 라벨용 헬퍼 함수 통합
+// 포맷터 라벨용 헬퍼 함수 통합
 // ==========================================
 const getTransactionLabel = (transactionType) => {
   const labels = {
@@ -457,11 +513,17 @@ watch(() => route.params.id, async () => {
   loadPropertyData()
   await nextTick()
   initMiniMap()
+  
+  // 5. 패스 아이디 라우트 갱신 시 관심 배열 리로드 가이드
+  loadUserFavorites()
 })
 
 onMounted(async () => {
   loadPropertyData() 
   await nextTick()
   initMiniMap()
+  
+  // 6. 마운트 수명 주기 발동 즉시 회원 관심 매물 동적 대조용 로드 기동
+  loadUserFavorites()
 })
 </script>
