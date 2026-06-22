@@ -91,8 +91,12 @@
             @click="handlePropertySelect(item)"
             class="bg-gray-50 border border-gray-200 hover:border-brand-point rounded-xl p-4 transition-all duration-200 cursor-pointer shadow-sm group hover:shadow-md"
           >
-            <div class="w-full h-28 bg-gray-200 rounded-lg mb-3 relative overflow-hidden flex items-center justify-center text-xs font-bold text-gray-400">
-              매물 이미지 준비 중
+            <div class="w-full aspect-[4/3] bg-gray-200 rounded-lg mb-3 relative overflow-hidden">
+              <img
+                :src="getPropertyImage(item.type)"
+                :alt="`${item.type} 매물 이미지`"
+                class="w-full h-full object-cover"
+              >
               <div v-if="item.score != null" class="absolute top-2 left-2 px-2 py-1 rounded bg-white/90 border border-gray-200 text-[10px] font-bold text-brand-point">
                 안전도 {{ item.score }}점
               </div>
@@ -218,6 +222,16 @@ let debounceTimer = null
 const infraMarkerEntries = []
 const propertyMarkerEntries = []
 let activeInfraInfoWindow = null
+
+const getPropertyImage = (type) => {
+  const images = {
+    오피스텔: '/images/officetel.jpg',
+    연립다세대: '/images/multi-family-house.jpg',
+    단독다가구: '/images/house.jpg'
+  }
+
+  return images[type] || '/images/default.jpg'
+}
 
 const selectedFilterCount = computed(() => {
   return Object.values(infraStore.filters).filter(Boolean).length
