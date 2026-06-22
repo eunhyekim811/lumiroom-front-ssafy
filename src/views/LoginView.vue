@@ -58,20 +58,20 @@ const password = ref('')
 const authStore = useAuthStore()
 const router = useRouter()
 
-const handleLoginSubmit = () => {
-  if (!email.value.trim()) {
-    alert('이메일을 입력해 주세요.')
-    return
-  }
-  if (!password.value.trim()) {
-    alert('비밀번호를 입력해 주세요.')
+const handleLoginSubmit = async () => {
+  if (!email.value.trim() || !password.value.trim()) {
+    alert('이메일과 비밀번호를 모두 입력해 주세요.')
     return
   }
   
-  // Pinia Auth Store 액션 호출을 통한 전역 세션 수립
-  authStore.login(email.value)
-  
-  // 로그인 성공 후 메인 홈 화면으로 리다이렉트
-  router.push('/')
+  try {
+    // 스토어의 실제 비즈니스 로직 호출 (이메일과 비밀번호 전달)
+    await authStore.login(email.value, password.value)
+    
+    // 로그인 성공 시 안전 지도로 리다이렉트
+    router.push('/map')
+  } catch (error) {
+    alert(error) // 백엔드에서 보낸 에러 메시지(예: 비밀번호 불일치) 출력
+  }
 }
 </script>
