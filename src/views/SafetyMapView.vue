@@ -44,7 +44,7 @@
           @input="handleRadiusInput"
           type="range"
           min="100"
-          max="1500"
+          max="5000"
           step="100"
           class="w-full accent-yellow-400"
         />
@@ -70,30 +70,48 @@
           <div class="flex justify-between items-center mb-2">
             <h2 class="text-xl font-black text-gray-900">주변 추천 매물</h2>
             <span class="text-xs bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-gray-500 font-bold">
-              총 {{ propertyStore.propertiesList.length }}개
+              총 {{ propertyStore.totalElements }}개
             </span>
           </div>
-          <p class="text-xs text-gray-400 font-medium leading-relaxed">매물을 클릭하면 데이터 분석 기반 인프라 현황을 관통해 드립니다.</p>
+          <p class="text-xs text-gray-400 font-medium leading-relaxed">현재 지도 중심과 조회 반경을 기준으로 실거래 매물을 표시합니다.</p>
         </div>
 
         <div class="flex-grow overflow-y-auto p-4 space-y-4">
+          <div v-if="propertyStore.isLoading" class="py-12 text-center text-sm font-bold text-gray-400">
+            주변 매물을 조회하고 있습니다.
+          </div>
+          <div v-else-if="propertyStore.errorMessage" class="p-4 bg-red-50 border border-red-200 rounded-xl text-sm font-bold text-red-600">
+            {{ propertyStore.errorMessage }}
+          </div>
+          <div v-else-if="propertyStore.propertiesList.length === 0" class="py-12 text-center text-sm font-bold text-gray-400">
+            현재 범위에서 조회된 매물이 없습니다.
+          </div>
           <div 
             v-for="item in propertyStore.propertiesList" :key="item.id"
-            @click="propertyStore.selectProperty(item)"
+            @click="handlePropertySelect(item)"
             class="bg-gray-50 border border-gray-200 hover:border-brand-point rounded-xl p-4 transition-all duration-200 cursor-pointer shadow-sm group hover:shadow-md"
           >
-            <div class="w-full h-36 bg-gray-200 rounded-lg mb-3 relative overflow-hidden">
-              <div class="absolute top-2 left-2 px-2 py-1 rounded bg-white/90 border border-gray-200 text-[10px] font-bold text-brand-point">
-                ★ 안전도 {{ item.score }}점
+            <div class="w-full aspect-[4/3] bg-gray-200 rounded-lg mb-3 relative overflow-hidden">
+              <img
+                :src="getPropertyImage(item.type)"
+                :alt="`${item.type} 매물 이미지`"
+                class="w-full h-full object-cover"
+              >
+              <div v-if="item.score != null" class="absolute top-2 left-2 px-2 py-1 rounded bg-white/90 border border-gray-200 text-[10px] font-bold text-brand-point">
+                안전도 {{ item.score }}점
               </div>
             </div>
             <div class="flex items-start justify-between">
-              <div>
-                <h3 class="font-extrabold text-lg text-gray-900 group-hover:text-brand-point transition-colors">{{ item.type }} {{ item.price }}</h3>
+              <div class="min-w-0 pr-3">
+                <h3 class="font-extrabold text-lg text-gray-900 group-hover:text-brand-point transition-colors truncate">{{ item.title }}</h3>
+                <p class="text-sm font-black text-gray-700 mt-1">{{ item.type }} · {{ item.price }}</p>
                 <p class="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed">{{ item.address }}</p>
               </div>
-              <span class="text-xs px-2 py-1 rounded font-bold" :class="item.grade === 1 ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-amber-50 text-amber-600 border border-amber-200'">
-                {{ item.grade }}등급 구역
+              <span v-if="item.grade" class="text-xs px-2 py-1 rounded font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap">
+                {{ item.grade }}등급
+              </span>
+              <span v-else class="text-xs px-2 py-1 rounded font-bold bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
+                안전정보 없음
               </span>
             </div>
           </div>
@@ -111,15 +129,16 @@
         <div class="flex-grow overflow-y-auto p-5 space-y-6">
           <div class="flex flex-col gap-3 border-b border-gray-100 pb-5">
             <div>
-              <span class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
-                LumiRoom 안심 {{ propertyStore.selectedProperty.grade }}등급 매물
+              <span v-if="propertyStore.selectedProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
+                LumiRoom 안심 {{ propertyStore.selectedProperty.grade }}등급
               </span>
               <h1 class="text-3xl font-black text-gray-900 mt-3 leading-tight">
-                {{ propertyStore.selectedProperty.type }} {{ propertyStore.selectedProperty.price }}
+                {{ propertyStore.selectedProperty.title }}
               </h1>
-              <p class="text-gray-400 text-sm mt-1.5 font-medium leading-relaxed">{{ propertyStore.selectedProperty.address }} · 3층</p>
+              <p class="text-gray-700 text-sm mt-1.5 font-black">{{ propertyStore.selectedProperty.type }} · {{ propertyStore.selectedProperty.price }}</p>
+              <p class="text-gray-400 text-sm mt-1 font-medium leading-relaxed">{{ propertyStore.selectedProperty.address }}</p>
             </div>
-            <div class="bg-gray-50 border border-gray-200 p-3.5 rounded-xl text-center shadow-sm">
+            <div v-if="propertyStore.selectedProperty.score != null" class="bg-gray-50 border border-gray-200 p-3.5 rounded-xl text-center shadow-sm">
               <span class="text-xs text-gray-400 font-bold block mb-0.5">인프라 매칭 안전도</span>
               <span class="text-2xl font-black text-brand-point drop-shadow-[0_0_4px_rgba(250,204,21,0.3)]">
                 {{ propertyStore.selectedProperty.score }}점
@@ -134,28 +153,20 @@
             <table class="w-full text-xs text-left border-collapse border border-gray-100 shadow-sm rounded-xl overflow-hidden">
               <tbody>
                 <tr class="border-b border-gray-100">
-                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500 w-1/3">방 구조</td>
-                  <td class="p-2.5 text-gray-700">분리형 원룸</td>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500 w-1/3">거래 유형</td>
+                  <td class="p-2.5 text-gray-700">{{ getTransactionLabel(propertyStore.selectedProperty.transactionType) }}</td>
                 </tr>
                 <tr class="border-b border-gray-100">
-                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">전용 면적</td>
-                  <td class="p-2.5 text-gray-700">23.1㎡ (7평)</td>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">보증금 범위</td>
+                  <td class="p-2.5 text-gray-700">{{ formatAmountRange(propertyStore.selectedProperty.minDepositAmount, propertyStore.selectedProperty.maxDepositAmount) }}</td>
                 </tr>
                 <tr class="border-b border-gray-100">
-                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">해당층 / 건물층</td>
-                  <td class="p-2.5 text-gray-700">3층 / 5층</td>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">월세 범위</td>
+                  <td class="p-2.5 text-gray-700">{{ formatAmountRange(propertyStore.selectedProperty.minMonthlyRentAmount, propertyStore.selectedProperty.maxMonthlyRentAmount) }}</td>
                 </tr>
                 <tr class="border-b border-gray-100">
-                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">엘리베이터</td>
-                  <td class="p-2.5 text-gray-700">있음</td>
-                </tr>
-                <tr class="border-b border-gray-100">
-                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">관리비</td>
-                  <td class="p-2.5 text-gray-700">7만원 (수도, 인터넷 포함)</td>
-                </tr>
-                <tr>
-                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">주차 여부</td>
-                  <td class="p-2.5 text-gray-700">가능 (월 3만원)</td>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">매매가 범위</td>
+                  <td class="p-2.5 text-gray-700">{{ formatAmountRange(propertyStore.selectedProperty.minTradeAmount, propertyStore.selectedProperty.maxTradeAmount) }}</td>
                 </tr>
               </tbody>
             </table>
@@ -385,6 +396,24 @@ const getInfraMarkerColor = (infra) => {
   return colors[infra] || '#6b7280'
 }
 
+const getTransactionLabel = (transactionType) => {
+  const labels = {
+    SALE: '매매',
+    JEONSE: '전세',
+    MONTHLY_RENT: '월세',
+    MIXED: '혼합',
+    UNKNOWN: '거래유형 미상'
+  }
+  return labels[transactionType] || transactionType || '거래유형 미상'
+}
+
+const formatAmountRange = (min, max) => {
+  if (min == null && max == null) return '정보 없음'
+  if (min == null) return `${max}`
+  if (max == null || min === max) return `${min}`
+  return `${min} ~ ${max}`
+}
+
 const escapeHtml = (value) => {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -409,11 +438,11 @@ const createMarkerImage = (type) => {
 }
 
 const clearInfraMarkers = () => {
-  markerEntries.forEach(({ marker }) => marker.setMap(null))
-  markerEntries.splice(0, markerEntries.length)
-  if (activeInfoWindow) {
-    activeInfoWindow.close()
-    activeInfoWindow = null
+  infraMarkerEntries.forEach(({ marker }) => marker.setMap(null))
+  infraMarkerEntries.splice(0, infraMarkerEntries.length)
+  if (activeInfraInfoWindow) {
+    activeInfraInfoWindow.close()
+    activeInfraInfoWindow = null
   }
 }
 
@@ -450,12 +479,61 @@ const renderInfraMarkers = () => {
     })
 
     window.kakao.maps.event.addListener(marker, 'click', () => {
-      if (activeInfoWindow) activeInfoWindow.close()
+      if (activeInfraInfoWindow) activeInfraInfoWindow.close()
       infoWindow.open(mapInstance, marker)
-      activeInfoWindow = infoWindow
+      activeInfraInfoWindow = infoWindow
     })
 
-    markerEntries.push({ marker, infoWindow, key: `${item.type}-${item.id}` })
+    infraMarkerEntries.push({ marker, infoWindow, key: `${item.type}-${item.id}` })
+  })
+}
+
+const createPropertyMarkerImage = () => {
+  const svg = `
+    <svg width="38" height="46" viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19 45C19 45 35 28.5 35 17C35 8.2 27.8 1 19 1C10.2 1 3 8.2 3 17C3 28.5 19 45 19 45Z" fill="#111827" stroke="#FACC15" stroke-width="3"/>
+      <path d="M12 17L19 11L26 17V26H12V17Z" fill="#FACC15"/>
+      <path d="M17 26V20H21V26" fill="#111827"/>
+    </svg>
+  `.trim()
+  const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+  const size = new window.kakao.maps.Size(38, 46)
+  const option = { offset: new window.kakao.maps.Point(19, 46) }
+  return new window.kakao.maps.MarkerImage(src, size, option)
+}
+
+const clearPropertyMarkers = () => {
+  propertyMarkerEntries.forEach(({ marker }) => marker.setMap(null))
+  propertyMarkerEntries.splice(0, propertyMarkerEntries.length)
+}
+
+const handlePropertySelect = (property) => {
+  propertyStore.selectProperty(property)
+  if (!mapInstance) return
+  mapInstance.panTo(new window.kakao.maps.LatLng(property.lat, property.lng))
+}
+
+const renderPropertyMarkers = () => {
+  if (!mapInstance || !window.kakao?.maps) return
+
+  clearPropertyMarkers()
+  const markerImage = createPropertyMarkerImage()
+
+  propertyStore.propertiesList.forEach((property) => {
+    if (!Number.isFinite(property.lat) || !Number.isFinite(property.lng)) return
+
+    const marker = new window.kakao.maps.Marker({
+      map: mapInstance,
+      position: new window.kakao.maps.LatLng(property.lat, property.lng),
+      image: markerImage,
+      title: property.title
+    })
+
+    window.kakao.maps.event.addListener(marker, 'click', () => {
+      handlePropertySelect(property)
+    })
+
+    propertyMarkerEntries.push({ marker, id: property.id })
   })
 }
 
@@ -466,9 +544,28 @@ const loadInfraByCurrentCenter = () => {
   infraStore.loadInfraItems()
 }
 
+const loadMapDataByCurrentCenter = () => {
+  if (!mapInstance) return
+  const center = mapInstance.getCenter()
+  const lat = center.getLat()
+  const lng = center.getLng()
+  infraStore.updateCenter(lat, lng)
+  infraStore.loadInfraItems()
+  propertyStore.loadProperties({
+    lat,
+    lng,
+    radius: infraStore.radius
+  })
+}
+
 const debounceLoadInfra = () => {
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(loadInfraByCurrentCenter, 450)
+}
+
+const debounceLoadMapData = () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(loadMapDataByCurrentCenter, 450)
 }
 
 const handleRadiusInput = (event) => {
@@ -485,7 +582,6 @@ const searchPlace = () => {
         bounds.extend(new window.kakao.maps.LatLng(data[i].y, data[i].x))
       }
       mapInstance.setBounds(bounds)
-      debounceLoadInfra()
     }
   })
 }
@@ -500,8 +596,8 @@ onMounted(() => {
       }
       mapInstance = new window.kakao.maps.Map(container, options)
       mapInstance.relayout()
-      window.kakao.maps.event.addListener(mapInstance, 'idle', debounceLoadInfra)
-      loadInfraByCurrentCenter()
+      window.kakao.maps.event.addListener(mapInstance, 'idle', debounceLoadMapData)
+      loadMapDataByCurrentCenter()
       if (infraStore.searchKeyword) searchPlace()
     })
   }
@@ -510,6 +606,12 @@ onMounted(() => {
 watch(
   () => infraStore.infraItems,
   renderInfraMarkers,
+  { deep: true }
+)
+
+watch(
+  () => propertyStore.propertiesList,
+  renderPropertyMarkers,
   { deep: true }
 )
 
@@ -526,12 +628,13 @@ watch(
   () => infraStore.radius,
   () => {
     if (!mapInstance) return
-    debounceLoadInfra()
+    debounceLoadMapData()
   }
 )
 
 onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
   clearInfraMarkers()
+  clearPropertyMarkers()
 })
 </script>
