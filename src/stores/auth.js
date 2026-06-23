@@ -117,8 +117,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 4. 회원가입
   const signup = async (email, password, nickname) => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+
     try {
-      await http.post('/auth/signup', { email, password, nickname });
+      // await http.post('/auth/signup', { email, password, nickname });
+      await axios.post('http://localhost:8080/api/auth/signup', { email, password, nickname });
       return true;
     } catch (error) {
       throw error.response?.data || '회원가입에 실패했습니다.';
@@ -127,8 +131,12 @@ export const useAuthStore = defineStore('auth', () => {
 
   // 5. 로그인
   const login = async (email, password) => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+
     try {
-      const response = await http.post('/auth/login', { email, password });
+      // const response = await http.post('/auth/login', { email, password });
+      const response = await axios.post('http://localhost:8080/api/auth/login', { email, password });
       const { accessToken, refreshToken } = response.data;
 
       localStorage.setItem('accessToken', accessToken);
