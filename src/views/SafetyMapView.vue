@@ -562,6 +562,7 @@ const loadAiBriefing = async () => {
 watch(
   () => propertyStore.selectedProperty,
   (newProperty) => {
+    updatePropertyMarkerSelection(newProperty?.id)
     newComment.value = '' 
     newRating.value = 5   
     
@@ -691,18 +692,34 @@ const renderInfraMarkers = () => {
   })
 }
 
-const createPropertyMarkerImage = () => {
+const createPropertyMarkerImage = (isSelected = false) => {
+  const width = isSelected ? 52 : 38
+  const height = isSelected ? 62 : 46
+  const centerX = width / 2
+  const markerColor = isSelected ? '#FACC15' : '#111827'
+  const accentColor = isSelected ? '#111827' : '#FACC15'
   const svg = `
-    <svg width="38" height="46" viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M19 45C19 45 35 28.5 35 17C35 8.2 27.8 1 19 1C10.2 1 3 8.2 3 17C3 28.5 19 45 19 45Z" fill="#111827" stroke="#FACC15" stroke-width="3"/>
-      <path d="M12 17L19 11L26 17V26H12V17Z" fill="#FACC15"/>
-      <path d="M17 26V20H21V26" fill="#111827"/>
+    <svg width="${width}" height="${height}" viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+      ${isSelected ? '<circle cx="19" cy="17" r="16" fill="#111827" fill-opacity="0.3"/>' : ''}
+      <path d="M19 45C19 45 35 28.5 35 17C35 8.2 27.8 1 19 1C10.2 1 3 8.2 3 17C3 28.5 19 45 19 45Z" fill="${markerColor}" stroke="${accentColor}" stroke-width="2.5"/>
+      <path d="M12 17L19 11L26 17V26H12V17Z" fill="${accentColor}"/>
+      <path d="M17 26V20H21V26" fill="${markerColor}"/>
     </svg>
   `.trim()
   const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
-  const size = new window.kakao.maps.Size(38, 46)
-  const option = { offset: new window.kakao.maps.Point(19, 46) }
+  const size = new window.kakao.maps.Size(width, height)
+  const option = { offset: new window.kakao.maps.Point(centerX, height) }
   return new window.kakao.maps.MarkerImage(src, size, option)
+}
+
+const updatePropertyMarkerSelection = (selectedId) => {
+  if (!window.kakao?.maps) return
+
+  propertyMarkerEntries.forEach(({ marker, id }) => {
+    const isSelected = id === selectedId
+    marker.setImage(createPropertyMarkerImage(isSelected))
+    marker.setZIndex(isSelected ? 10 : 1)
+  })
 }
 
 const clearPropertyMarkers = () => {
@@ -719,17 +736,18 @@ const handlePropertySelect = (property) => {
 const renderPropertyMarkers = () => {
   if (!mapInstance || !window.kakao?.maps) return
   clearPropertyMarkers()
-  const markerImage = createPropertyMarkerImage()
 
   propertyStore.propertiesList.forEach((property) => {
     if (!Number.isFinite(property.lat) || !Number.isFinite(property.lng)) return
 
+    const isSelected = property.id === propertyStore.selectedProperty?.id
     const marker = new window.kakao.maps.Marker({
       map: mapInstance,
       position: new window.kakao.maps.LatLng(property.lat, property.lng),
-      image: markerImage,
+      image: createPropertyMarkerImage(isSelected),
       title: property.title
     })
+    marker.setZIndex(isSelected ? 10 : 1)
 
     window.kakao.maps.event.addListener(marker, 'click', () => {
       handlePropertySelect(property)
