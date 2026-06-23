@@ -29,7 +29,10 @@
           placeholder="동네 또는 지하철역 검색 (예: 신림역)" 
           class="flex-grow px-1 py-1 text-black text-sm outline-none font-black placeholder-gray-400"
         />
-        <button @click="searchPlace" class="bg-yellow-400 hover:bg-yellow-500 text-black px-3 py-1.5 rounded-xl font-black text-xs shadow-md">
+        <button
+          @click="searchPlace"
+          class="shrink-0 min-w-[52px] bg-black hover:bg-gray-800 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-md whitespace-nowrap transition-colors"
+        >
           검색
         </button>
       </div>
@@ -97,7 +100,7 @@
               class="absolute top-6 right-6 z-30 p-2 rounded-full bg-white/95 shadow-md border border-gray-150 text-gray-400 hover:text-red-500 hover:scale-110 active:scale-95 transition-all"
               title="관심 매물 토글"
             >
-              <svg class="w-4 h-4" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <svg class="w-6 h-6" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
               </svg>
             </button>
@@ -114,7 +117,11 @@
                 <p class="text-sm font-black text-gray-700 mt-1">{{ item.type }} · {{ item.price }}</p>
                 <p class="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed truncate">{{ item.address }}</p>
               </div>
-              <span v-if="item.grade" class="text-xs px-2 py-1 rounded font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap">
+              <span
+                v-if="item.grade"
+                :class="getSafetyGradeClass(item.grade)"
+                class="text-xs px-2 py-1 rounded font-bold border whitespace-nowrap"
+              >
                 {{ item.grade }}등급
               </span>
               <span v-else class="text-xs px-2 py-1 rounded font-bold bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
@@ -136,7 +143,11 @@
         <div class="flex-grow overflow-y-auto p-5 space-y-6">
           <div class="flex flex-col gap-3 border-b border-gray-100 pb-5">
             <div>
-              <span v-if="propertyStore.selectedProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
+              <span
+                v-if="propertyStore.selectedProperty.grade"
+                :class="getSafetyGradeClass(propertyStore.selectedProperty.grade)"
+                class="text-xs border px-3 py-1 rounded-lg font-black tracking-wide shadow-sm"
+              >
                 LumiRoom 안심 {{ propertyStore.selectedProperty.grade }}등급
               </span>
               
@@ -192,6 +203,10 @@
                   <td class="p-2.5 bg-gray-50 font-bold text-gray-500">매매가 범위</td>
                   <td class="p-2.5 text-gray-700">{{ formatAmountRange(propertyStore.selectedProperty.minTradeAmount, propertyStore.selectedProperty.maxTradeAmount) }}</td>
                 </tr>
+                <tr>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">건축연도</td>
+                  <td class="p-2.5 text-gray-700">{{ formatBuiltYear(propertyStore.selectedProperty) }}</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -241,13 +256,8 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-2xl font-black text-blue-600">{{ aiBriefing.safetyScore }}점</span>
-                  <span 
-                    :class="{
-                      'bg-emerald-100 text-emerald-800 border-emerald-200': aiBriefing.safetyGrade === 'A',
-                      'bg-blue-100 text-blue-800 border-blue-200': aiBriefing.safetyGrade === 'B',
-                      'bg-amber-100 text-yellow-800 border-yellow-200': aiBriefing.safetyGrade === 'C',
-                      'bg-red-100 text-red-800 border-red-200': aiBriefing.safetyGrade === 'D',
-                    }"
+                  <span
+                    :class="getSafetyGradeClass(aiBriefing.safetyGrade)"
                     class="px-2.5 py-1 text-xs font-black rounded-lg border"
                   >
                     등급 {{ aiBriefing.safetyGrade }}
@@ -353,7 +363,7 @@
                 placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
                 class="flex-grow p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold outline-none focus:border-brand-point text-gray-900 placeholder-gray-400"
               />
-              <button @click="submitComment" class="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-300 px-4 rounded-xl font-black text-xs shadow-md transition-colors whitespace-nowrap">
+              <button @click="submitComment" class="bg-black hover:bg-gray-800 text-white border-2 border-black px-4 rounded-xl font-black text-xs shadow-md transition-colors whitespace-nowrap">
                 등록
               </button>
             </div>
@@ -410,6 +420,7 @@ import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
+import { getSafetyGradeClass } from '@/utils/safetyGrade'
 
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()
@@ -554,6 +565,7 @@ const loadAiBriefing = async () => {
 watch(
   () => propertyStore.selectedProperty,
   (newProperty) => {
+    updatePropertyMarkerSelection(newProperty?.id)
     newComment.value = '' 
     newRating.value = 5   
     
@@ -603,6 +615,11 @@ const formatAmountRange = (min, max) => {
   if (min == null) return `${max}`
   if (max == null || min === max) return `${min}`
   return `${min} ~ ${max}`
+}
+
+const formatBuiltYear = (property) => {
+  const builtYear = property?.builtYear ?? property?.buildYear ?? property?.constructionYear
+  return builtYear ? `${builtYear}년` : '정보 없음'
 }
 
 const escapeHtml = (value) => {
@@ -678,18 +695,34 @@ const renderInfraMarkers = () => {
   })
 }
 
-const createPropertyMarkerImage = () => {
+const createPropertyMarkerImage = (isSelected = false) => {
+  const width = isSelected ? 52 : 38
+  const height = isSelected ? 62 : 46
+  const centerX = width / 2
+  const markerColor = isSelected ? '#FACC15' : '#111827'
+  const accentColor = isSelected ? '#111827' : '#FACC15'
   const svg = `
-    <svg width="38" height="46" viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M19 45C19 45 35 28.5 35 17C35 8.2 27.8 1 19 1C10.2 1 3 8.2 3 17C3 28.5 19 45 19 45Z" fill="#111827" stroke="#FACC15" stroke-width="3"/>
-      <path d="M12 17L19 11L26 17V26H12V17Z" fill="#FACC15"/>
-      <path d="M17 26V20H21V26" fill="#111827"/>
+    <svg width="${width}" height="${height}" viewBox="0 0 38 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+      ${isSelected ? '<circle cx="19" cy="17" r="16" fill="#111827" fill-opacity="0.3"/>' : ''}
+      <path d="M19 45C19 45 35 28.5 35 17C35 8.2 27.8 1 19 1C10.2 1 3 8.2 3 17C3 28.5 19 45 19 45Z" fill="${markerColor}" stroke="${accentColor}" stroke-width="2.5"/>
+      <path d="M12 17L19 11L26 17V26H12V17Z" fill="${accentColor}"/>
+      <path d="M17 26V20H21V26" fill="${markerColor}"/>
     </svg>
   `.trim()
   const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
-  const size = new window.kakao.maps.Size(38, 46)
-  const option = { offset: new window.kakao.maps.Point(19, 46) }
+  const size = new window.kakao.maps.Size(width, height)
+  const option = { offset: new window.kakao.maps.Point(centerX, height) }
   return new window.kakao.maps.MarkerImage(src, size, option)
+}
+
+const updatePropertyMarkerSelection = (selectedId) => {
+  if (!window.kakao?.maps) return
+
+  propertyMarkerEntries.forEach(({ marker, id }) => {
+    const isSelected = id === selectedId
+    marker.setImage(createPropertyMarkerImage(isSelected))
+    marker.setZIndex(isSelected ? 10 : 1)
+  })
 }
 
 const clearPropertyMarkers = () => {
@@ -706,17 +739,18 @@ const handlePropertySelect = (property) => {
 const renderPropertyMarkers = () => {
   if (!mapInstance || !window.kakao?.maps) return
   clearPropertyMarkers()
-  const markerImage = createPropertyMarkerImage()
 
   propertyStore.propertiesList.forEach((property) => {
     if (!Number.isFinite(property.lat) || !Number.isFinite(property.lng)) return
 
+    const isSelected = property.id === propertyStore.selectedProperty?.id
     const marker = new window.kakao.maps.Marker({
       map: mapInstance,
       position: new window.kakao.maps.LatLng(property.lat, property.lng),
-      image: markerImage,
+      image: createPropertyMarkerImage(isSelected),
       title: property.title
     })
+    marker.setZIndex(isSelected ? 10 : 1)
 
     window.kakao.maps.event.addListener(marker, 'click', () => {
       handlePropertySelect(property)
