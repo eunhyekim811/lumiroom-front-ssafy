@@ -218,13 +218,13 @@
 
             <div v-if="!aiBriefing && !isBriefingLoading" class="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-center shadow-sm">
               <p class="text-xs text-blue-900 font-semibold mb-3 leading-relaxed">
-                매물 반경 1,000m 이내 수집된 공공 CCTV, 가로등, 안심보안등 및 치안안전시설 분포 데이터를 기반으로 지능형 종합 치안 리포트를 생성합니다.
+                매물 데이터 마스터 지표 및 반경 1,000m 이내 실시간 탐색 가로등 지표를 정밀 보정 결합하여 지능형 종합 치안 안전 리포트를 생성합니다.
               </p>
               <button 
                 @click="loadAiBriefing" 
                 class="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md transition transform active:scale-95 flex items-center justify-center gap-2"
               >
-                AI 안심 브리핑 분석서 생성
+                ⚡ AI 안심 브리핑 분석서 생성
               </button>
             </div>
 
@@ -239,7 +239,7 @@
                 <div class="h-3 bg-gray-200 rounded w-4/5"></div>
               </div>
               <p class="text-[11px] text-center font-bold text-blue-500 animate-bounce">
-                치안인프라 공간 데이터 수집 및 안심 리포트 작성 중...
+                하이브리드 치안 인프라 연산 및 안심 보고서 합성 중...
               </p>
             </div>
 
@@ -285,9 +285,7 @@
               </div>
 
               <div class="bg-blue-500 text-white rounded-xl p-3 shadow-md relative">
-                <p class="text-xs font-bold leading-relaxed">
-                  📢 {{ aiBriefing.oneLineSummary }}
-                </p>
+                <p class="text-xs font-bold leading-relaxed">📢 {{ aiBriefing.oneLineSummary }}</p>
               </div>
 
               <div v-if="aiBriefing.positivePoints && aiBriefing.positivePoints.length > 0">
@@ -295,12 +293,8 @@
                   <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>안심 안전 우수 요인
                 </h4>
                 <ul class="space-y-1 pl-1">
-                  <li 
-                    v-for="(point, idx) in aiBriefing.positivePoints" :key="'pos-'+idx"
-                    class="text-xs text-gray-700 font-semibold leading-relaxed flex items-start gap-1.5"
-                  >
-                    <span class="text-emerald-500 text-xs">✓</span>
-                    <span>{{ point }}</span>
+                  <li v-for="(point, idx) in aiBriefing.positivePoints" :key="'pos-'+idx" class="text-xs text-gray-700 font-semibold leading-relaxed flex items-start gap-1.5">
+                    <span class="text-emerald-500 text-xs">✓</span><span>{{ point }}</span>
                   </li>
                 </ul>
               </div>
@@ -310,26 +304,18 @@
                   <span class="w-1.5 h-1.5 bg-red-500 rounded-full"></span>야간 보행 주의 요인
                 </h4>
                 <ul class="space-y-1 pl-1">
-                  <li 
-                    v-for="(point, idx) in aiBriefing.warningPoints" :key="'warn-'+idx"
-                    class="text-xs text-gray-700 font-semibold leading-relaxed flex items-start gap-1.5"
-                  >
-                    <span class="text-red-500 text-xs">⚠</span>
-                    <span>{{ point }}</span>
+                  <li v-for="(point, idx) in aiBriefing.warningPoints" :key="'warn-'+idx" class="text-xs text-gray-700 font-semibold leading-relaxed flex items-start gap-1.5">
+                    <span class="text-red-500 text-xs">⚠</span><span>{{ point }}</span>
                   </li>
                 </ul>
               </div>
 
               <div class="bg-amber-50 border border-amber-100 rounded-xl p-3">
-                <h5 class="text-xs font-extrabold text-yellow-800 mb-1 flex items-center gap-1">
-                  🌙 심야 시간대 안심 도보 조언
-                </h5>
-                <p class="text-xs text-gray-600 leading-relaxed font-semibold">
-                  {{ aiBriefing.nightWalkingAdvice }}
-                </p>
+                <h5 class="text-xs font-extrabold text-yellow-800 mb-1 flex items-center gap-1">🌙 심야 시간대 안심 도보 조언</h5>
+                <p class="text-xs text-gray-600 leading-relaxed font-semibold">{{ aiBriefing.nightWalkingAdvice }}</p>
               </div>
 
-              <div class="text-nav-bg text-xs font-medium leading-relaxed bg-white border border-blue-50 p-3 rounded-xl">
+              <div class="text-xs text-gray-500 font-medium leading-relaxed bg-white border border-blue-50 p-3 rounded-xl">
                 <span class="font-black text-gray-700 block mb-1">🔍 정밀 안전 진단 총평:</span>
                 {{ aiBriefing.totalReview }}
               </div>
@@ -390,9 +376,9 @@
                     <div class="flex items-center gap-2 text-gray-400">
                       <span class="text-[10px] font-medium">{{ comment.createdAt?.substring(0, 10) }}</span>
                       <button 
-                        v-if="authStore.userProfile?.id === comment.userId"
+                        v-if="authStore.userProfile?.email === comment.userName"
                         @click="deleteComment(comment.id)"
-                        class="text-red-500 hover:text-red-700 text-[10px] font-black transition-colors"
+                        class="hidden group-hover:block text-red-500 hover:text-red-700 text-[10px] font-black"
                       >
                         삭제
                       </button>
@@ -400,6 +386,7 @@
                   </div>
                   <p class="text-gray-600 font-semibold leading-relaxed whitespace-pre-line">{{ comment.content }}</p>
                 </div>
+                
                 <div v-if="comments.length === 0" class="text-center py-6 text-gray-400 text-xs font-bold">
                   등록된 체감 치안 리뷰가 없습니다. 첫 소통을 시작해 보세요!
                 </div>
@@ -417,9 +404,10 @@ import { computed, ref, onBeforeUnmount, onMounted, watch } from 'vue'
 import { useInfraStore } from '@/stores/infra'
 import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth' 
+// 🌟 복원: 기존 즐겨찾기 관련 API 및 변수들 원상 복구
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
-import { fetchAiBriefing } from '@/api/ai'
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
+import { fetchAiBriefing } from '@/api/ai'
 import { getSafetyGradeClass } from '@/utils/safetyGrade'
 
 const infraStore = useInfraStore()
@@ -432,6 +420,7 @@ const infraMarkerEntries = []
 const propertyMarkerEntries = []
 let activeInfraInfoWindow = null
 
+// 🌟 복원: 관심 매물 상태 저장소 및 로직
 const favoritePropertyIds = ref([])
 
 const loadUserFavoritesFeed = async () => {
@@ -449,9 +438,7 @@ const toggleFavoriteStatus = async (propertyId) => {
     alert('로그인 후 관심 매물 기능을 사용하실 수 있습니다.')
     return
   }
-
   const isAlreadyFavorited = favoritePropertyIds.value.includes(propertyId)
-
   try {
     if (isAlreadyFavorited) {
       await deleteFavorite(propertyId)
@@ -467,21 +454,13 @@ const toggleFavoriteStatus = async (propertyId) => {
 }
 
 const getPropertyImage = (type) => {
-  const images = {
-    오피스텔: '/images/officetel.jpg',
-    연립다세대: '/images/multi-family-house.jpg',
-    단독다가구: '/images/house.jpg'
-  }
+  const images = { 오피스텔: '/images/officetel.jpg', 연립다세대: '/images/multi-family-house.jpg', 단독다가구: '/images/house.jpg' }
   return images[type] || '/images/default.jpg'
 }
 
-const selectedFilterCount = computed(() => {
-  return Object.values(infraStore.filters).filter(Boolean).length
-})
+const selectedFilterCount = computed(() => Object.values(infraStore.filters).filter(Boolean).length)
 
-// ==========================================
 // 리뷰 로직
-// ==========================================
 const newComment = ref('')
 const newRating = ref(5) 
 const comments = ref([])
@@ -501,45 +480,33 @@ const loadReviews = async (propertyId) => {
 
 const submitComment = async () => {
   if (!newComment.value.trim()) return
-  
   if (!authStore.isLoggedIn) {
     alert('로그인 후 이용할 수 있습니다.')
     return
   }
-
   const propertyId = propertyStore.selectedProperty?.id
   if (!propertyId) return
-
   try {
-    await createPropertyReview({
-      propertyId: propertyId,
-      content: newComment.value,
-      rating: newRating.value 
-    })
+    await createPropertyReview({ propertyId: propertyId, content: newComment.value, rating: newRating.value })
     newComment.value = '' 
     newRating.value = 5   
     await loadReviews(propertyId)
   } catch (error) {
     console.error('리뷰 등록 실패:', error)
-    alert('리뷰 등록에 실패했습니다.')
   }
 }
 
 const deleteComment = async (reviewId) => {
   if (!confirm('이 리뷰를 삭제하시겠습니까?')) return
-  
   try {
     await deletePropertyReview(reviewId)
     await loadReviews(propertyStore.selectedProperty.id)
   } catch (error) {
     console.error('리뷰 삭제 실패:', error)
-    alert('본인이 작성한 리뷰만 삭제할 수 있습니다.')
   }
 }
 
-// ==========================================
-// AI 브리핑 로직
-// ==========================================
+// 🤖 추가: AI 브리핑 연동 로직
 const aiBriefing = ref(null)
 const isBriefingLoading = ref(false)
 const briefingError = ref(null)
@@ -552,7 +519,7 @@ const loadAiBriefing = async () => {
   briefingError.value = null
   
   try {
-    const data = await fetchAiBriefing(property.lat, property.lng)
+    const data = await fetchAiBriefing(property.lat, property.lng, property.id)
     aiBriefing.value = data
   } catch (error) {
     console.error('LumiRoom AI 안심 브리핑 연동 실패:', error)
@@ -568,7 +535,6 @@ watch(
     updatePropertyMarkerSelection(newProperty?.id)
     newComment.value = '' 
     newRating.value = 5   
-    
     aiBriefing.value = null 
     briefingError.value = null
     
@@ -580,35 +546,10 @@ watch(
   }
 )
 
-const getInfraLabel = (infra) => {
-  const labels = { cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }
-  return labels[infra]
-}
-const getInfraColorClass = (infra) => {
-  const classes = { cctv: 'bg-red-500', securityLight: 'bg-orange-500', streetLight: 'bg-yellow-400', police: 'bg-blue-400' }
-  return classes[infra]
-}
-
-const getInfraMarkerColor = (infra) => {
-  const colors = {
-    cctv: '#ef4444',
-    securityLight: '#f97316',
-    streetLight: '#facc15',
-    police: '#60a5fa'
-  }
-  return colors[infra] || '#6b7280'
-}
-
-const getTransactionLabel = (transactionType) => {
-  const labels = {
-    SALE: '매매',
-    JEONSE: '전세',
-    MONTHLY_RENT: '월세',
-    MIXED: '혼합',
-    UNKNOWN: '거래유형 미상'
-  }
-  return labels[transactionType] || transactionType || '거래유형 미상'
-}
+const getInfraLabel = (infra) => ({ cctv: 'CCTV', securityLight: '보안등', streetLight: '가로등', police: '치안안전시설' }[infra])
+const getInfraColorClass = (infra) => ({ cctv: 'bg-red-500', securityLight: 'bg-orange-500', streetLight: 'bg-yellow-400', police: 'bg-blue-400' }[infra])
+const getInfraMarkerColor = (infra) => ({ cctv: '#ef4444', securityLight: '#f97316', streetLight: '#facc15', police: '#60a5fa' }[infra] || '#6b7280')
+const getTransactionLabel = (type) => ({ SALE: '매매', JEONSE: '전세', MONTHLY_RENT: '월세', MIXED: '혼합', UNKNOWN: '거래유형 미상' }[type] || type || '거래유형 미상')
 
 const formatAmountRange = (min, max) => {
   if (min == null && max == null) return '정보 없음'
@@ -633,16 +574,8 @@ const escapeHtml = (value) => {
 
 const createMarkerImage = (type) => {
   const color = getInfraMarkerColor(type)
-  const svg = `
-    <svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M17 41C17 41 31 25.9 31 15.8C31 7.6 24.7 1 17 1C9.3 1 3 7.6 3 15.8C3 25.9 17 41 17 41Z" fill="${color}" stroke="white" stroke-width="2"/>
-      <circle cx="17" cy="15.5" r="5" fill="white"/>
-    </svg>
-  `.trim()
-  const src = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
-  const size = new window.kakao.maps.Size(34, 42)
-  const option = { offset: new window.kakao.maps.Point(17, 42) }
-  return new window.kakao.maps.MarkerImage(src, size, option)
+  const svg = `<svg width="34" height="42" viewBox="0 0 34 42" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M17 41C17 41 31 25.9 31 15.8C31 7.6 24.7 1 17 1C9.3 1 3 7.6 3 15.8C3 25.9 17 41 17 41Z" fill="${color}" stroke="white" stroke-width="2"/><circle cx="17" cy="15.5" r="5" fill="white"/></svg>`.trim()
+  return new window.kakao.maps.MarkerImage(`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`, new window.kakao.maps.Size(34, 42), { offset: new window.kakao.maps.Point(17, 42) })
 }
 
 const clearInfraMarkers = () => {
@@ -656,41 +589,23 @@ const clearInfraMarkers = () => {
 
 const createInfoWindowContent = (item) => {
   const installedAt = item.installedAt || '설치일 정보 없음'
-  return `
-    <div style="min-width:220px;padding:12px 14px;color:#111827;font-family:Pretendard, sans-serif;">
-      <div style="font-size:13px;font-weight:900;margin-bottom:6px;">${escapeHtml(item.name || getInfraLabel(item.type))}</div>
-      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:3px;">${escapeHtml(getInfraLabel(item.type))}</div>
-      <div style="font-size:11px;color:#374151;line-height:1.5;">${escapeHtml(item.address || '주소 정보 없음')}</div>
-      <div style="font-size:11px;color:#374151;line-height:1.5;">출처: ${escapeHtml(item.source || '출처 정보 없음')}</div>
-      <div style="font-size:11px;color:#374151;line-height:1.5;">설치일: ${escapeHtml(installedAt)}</div>
-    </div>
-  `
+  return `<div style="min-width:220px;padding:12px 14px;color:#111827;font-family:Pretendard, sans-serif;"><div style="font-size:13px;font-weight:900;margin-bottom:6px;">${escapeHtml(item.name || getInfraLabel(item.type))}</div><div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:3px;">${escapeHtml(getInfraLabel(item.type))}</div><div style="font-size:11px;color:#374151;line-height:1.5;">${escapeHtml(item.address || '주소 정보 없음')}</div><div style="font-size:11px;color:#374151;line-height:1.5;">출처: ${escapeHtml(item.source || '출처 정보 없음')}</div><div style="font-size:11px;color:#374151;line-height:1.5;">설치일: ${escapeHtml(installedAt)}</div></div>`
 }
 
 const renderInfraMarkers = () => {
   if (!mapInstance || !window.kakao?.maps) return
   clearInfraMarkers()
-
   infraStore.infraItems.forEach((item) => {
     if (!item?.lat || !item?.lng) return
-
     const marker = new window.kakao.maps.Marker({
-      map: mapInstance,
-      position: new window.kakao.maps.LatLng(Number(item.lat), Number(item.lng)),
-      image: createMarkerImage(item.type)
+      map: mapInstance, position: new window.kakao.maps.LatLng(Number(item.lat), Number(item.lng)), image: createMarkerImage(item.type)
     })
-
-    const infoWindow = new window.kakao.maps.InfoWindow({
-      content: createInfoWindowContent(item),
-      removable: true
-    })
-
+    const infoWindow = new window.kakao.maps.InfoWindow({ content: createInfoWindowContent(item), removable: true })
     window.kakao.maps.event.addListener(marker, 'click', () => {
       if (activeInfraInfoWindow) activeInfraInfoWindow.close()
       infoWindow.open(mapInstance, marker)
       activeInfraInfoWindow = infoWindow
     })
-
     infraMarkerEntries.push({ marker, infoWindow, key: `${item.type}-${item.id}` })
   })
 }
@@ -774,26 +689,12 @@ const loadMapDataByCurrentCenter = () => {
   const lng = center.getLng()
   infraStore.updateCenter(lat, lng)
   infraStore.loadInfraItems()
-  propertyStore.loadProperties({
-    lat,
-    lng,
-    radius: infraStore.radius
-  })
+  propertyStore.loadProperties({ lat, lng, radius: infraStore.radius })
 }
 
-const debounceLoadInfra = () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(loadInfraByCurrentCenter, 450)
-}
-
-const debounceLoadMapData = () => {
-  clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(loadMapDataByCurrentCenter, 450)
-}
-
-const handleRadiusInput = (event) => {
-  infraStore.updateRadius(event.target.value)
-}
+const debounceLoadInfra = () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(loadInfraByCurrentCenter, 450) }
+const debounceLoadMapData = () => { clearTimeout(debounceTimer); debounceTimer = setTimeout(loadMapDataByCurrentCenter, 450) }
+const handleRadiusInput = (event) => { infraStore.updateRadius(event.target.value) }
 
 const searchPlace = () => {
   if (!infraStore.searchKeyword.trim() || !mapInstance) return
@@ -801,9 +702,7 @@ const searchPlace = () => {
   ps.keywordSearch(infraStore.searchKeyword, (data, status) => {
     if (status === window.kakao.maps.services.Status.OK) {
       const bounds = new window.kakao.maps.LatLngBounds()
-      for (let i = 0; i < data.length; i++) {
-        bounds.extend(new window.kakao.maps.LatLng(data[i].y, data[i].x))
-      }
+      for (let i = 0; i < data.length; i++) { bounds.extend(new window.kakao.maps.LatLng(data[i].y, data[i].x)) }
       mapInstance.setBounds(bounds)
     }
   })
@@ -815,49 +714,23 @@ onMounted(() => {
   if (window.kakao && window.kakao.maps) {
     window.kakao.maps.load(() => {
       const container = document.getElementById('kakao-map')
-      const options = { 
-        center: new window.kakao.maps.LatLng(infraStore.mapCenter.lat, infraStore.mapCenter.lng), 
-        level: 3 
-      }
+      const options = { center: new window.kakao.maps.LatLng(infraStore.mapCenter.lat, infraStore.mapCenter.lng), level: 3 }
       mapInstance = new window.kakao.maps.Map(container, options)
       mapInstance.relayout()
       window.kakao.maps.event.addListener(mapInstance, 'idle', debounceLoadMapData)
       loadMapDataByCurrentCenter()
       if (infraStore.searchKeyword) searchPlace()
       
+      // 🌟 복원: 마운트 시 초기 즐겨찾기 상태 갱신
       loadUserFavoritesFeed()
     })
   }
 })
 
-watch(
-  () => infraStore.infraItems,
-  renderInfraMarkers,
-  { deep: true }
-)
-
-watch(
-  () => propertyStore.propertiesList,
-  renderPropertyMarkers,
-  { deep: true }
-)
-
-watch(
-  () => ({ ...infraStore.filters }),
-  () => {
-    if (!mapInstance) return
-    debounceLoadInfra()
-  },
-  { deep: true }
-)
-
-watch(
-  () => infraStore.radius,
-  () => {
-    if (!mapInstance) return
-    debounceLoadMapData()
-  }
-)
+watch(() => infraStore.infraItems, renderInfraMarkers, { deep: true })
+watch(() => propertyStore.propertiesList, renderPropertyMarkers, { deep: true })
+watch(() => ({ ...infraStore.filters }), () => { if (mapInstance) debounceLoadInfra() }, { deep: true })
+watch(() => infraStore.radius, () => { if (mapInstance) debounceLoadMapData() })
 
 onBeforeUnmount(() => {
   clearTimeout(debounceTimer)
