@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const baseUrl = import.meta.env.VITE_API_BASE_URL;
+
 const http = axios.create({
-  baseURL: 'http://localhost:8080/api', // 백엔드 서버 주소 (환경에 맞게 수정)
+  baseURL: `${baseUrl}/api`, // 백엔드 서버 주소 (환경에 맞게 수정)
   headers: {
     'Content-Type': 'application/json',
   },
@@ -34,7 +36,7 @@ http.interceptors.response.use(
           throw new Error('refresh token 없음');
         }
 
-        const response=await axios.post('http://localhost:8080/api/auth/refresh', {}, {
+        const response=await axios.post(`${baseUrl}/api/auth/refresh`, {}, {
           headers: { 'RefreshToken': refreshToken  }
         });
 
