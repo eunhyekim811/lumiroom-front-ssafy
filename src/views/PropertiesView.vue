@@ -7,10 +7,7 @@
       </div>
       
       <div class="flex gap-2">
-        <select class="bg-brand-card border border-gray-700 text-gray-100 px-4 py-2 rounded-xl text-sm font-bold focus:outline-none focus:border-brand-point">
-          <option>서울 관악구 신림동</option>
-        </select>
-        <select class="bg-brand-card border border-gray-700 text-brand-point px-4 py-2 rounded-xl text-sm font-bold focus:outline-none focus:border-brand-point">
+        <select class="bg-brand-card border border-gray-700 text-white px-4 py-2 rounded-xl text-sm font-bold focus:outline-none focus:border-brand-point">
           <option>안전지수 높은 순</option>
         </select>
       </div>
@@ -23,8 +20,14 @@
         class="bg-white border border-gray-200 hover:border-brand-point rounded-2xl p-5 cursor-pointer transition-all duration-300 group shadow-sm hover:shadow-lg hover:scale-[1.01] relative"
       >
         <div class="h-48 bg-gray-100 rounded-xl mb-4 relative overflow-hidden">
+          <img
+            :src="getPropertyImage(item.type)"
+            :alt="`${item.type} 매물 이미지`"
+            class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          >
+
           <div class="absolute top-3 left-3 bg-yellow-100 border border-amber-200 backdrop-blur text-xs font-black text-brand-point px-3 py-1 rounded-lg shadow-sm z-10">
-            안전 종합지수 {{ item.score }}점
+            안전지수 {{ item.score }}점
           </div>
 
           <button 
@@ -32,7 +35,7 @@
             class="absolute top-3 right-3 z-25 p-2 rounded-full bg-white/95 shadow-md border border-gray-150 text-gray-400 hover:text-red-500 hover:scale-110 active:scale-95 transition-all cursor-pointer"
             title="관심 매물 등록/해제"
           >
-            <svg class="w-4 h-4" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <svg class="w-6 h-6" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
             </svg>
           </button>
@@ -48,15 +51,15 @@
               :class="getSafetyGradeClass(item.grade)"
               class="inline-block text-xs font-bold border px-2.5 py-1 rounded-lg"
             >
-              안전 {{ item.grade }}등급
+              {{ item.grade }}등급
             </span>
           </div>
         </div>
 
         <div class="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-400">
-          <span>CCTV {{ item.cctvCount || 4 }}대</span>
-          <span>보안등 {{ item.lampCount || 3 }}개</span>
-          <span class="text-brand-point">안심 귀가선 내 존재</span>
+          <span>📹CCTV {{ item.cctvCount ?? 0 }}대</span>
+          <span>💡보안등 {{ item.securityLightCount ?? 0 }}개</span>
+          <span>🛡️치안시설 {{ item.securityFacilityCount ?? 0 }}개</span>
         </div>
       </div>
     </div>
@@ -77,6 +80,15 @@ import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
 const router = useRouter()
 const propertyStore = usePropertyStore()
 const authStore = useAuthStore()
+
+const getPropertyImage = (type) => {
+  const images = {
+    오피스텔: '/images/officetel.jpg',
+    연립다세대: '/images/multi-family-house.jpg',
+    단독다가구: '/images/house.jpg'
+  }
+  return images[type] || '/images/default.jpg'
+}
 
 // 현재 로그인한 회원이 찜해 놓은 매물 아이디 목록 추적 반응형 배열
 const favoritePropertyIds = ref([])

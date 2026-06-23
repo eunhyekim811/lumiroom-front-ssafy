@@ -97,7 +97,7 @@
               class="absolute top-6 right-6 z-30 p-2 rounded-full bg-white/95 shadow-md border border-gray-150 text-gray-400 hover:text-red-500 hover:scale-110 active:scale-95 transition-all"
               title="관심 매물 토글"
             >
-              <svg class="w-4 h-4" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <svg class="w-6 h-6" :class="{'text-red-500 fill-current': favoritePropertyIds.includes(item.id)}" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path>
               </svg>
             </button>
@@ -360,7 +360,7 @@
                 placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
                 class="flex-grow p-3 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold outline-none focus:border-brand-point text-gray-900 placeholder-gray-400"
               />
-              <button @click="submitComment" class="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-300 px-4 rounded-xl font-black text-xs shadow-md transition-colors whitespace-nowrap">
+              <button @click="submitComment" class="bg-black hover:bg-gray-800 text-white border-2 border-black px-4 rounded-xl font-black text-xs shadow-md transition-colors whitespace-nowrap">
                 등록
               </button>
             </div>

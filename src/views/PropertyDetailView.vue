@@ -249,7 +249,7 @@
               placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
               class="flex-grow p-4 bg-gray-50 border border-gray-300 rounded-xl text-sm font-bold outline-none focus:border-brand-point text-gray-900 placeholder-gray-400"
             />
-            <button @click="submitComment" class="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-300 px-6 rounded-xl font-black text-sm shadow-md transition-colors whitespace-nowrap">
+            <button @click="submitComment" class="bg-black hover:bg-gray-800 text-white border-2 border-black px-6 rounded-xl font-black text-sm shadow-md transition-colors whitespace-nowrap">
               등록
             </button>
           </div>
