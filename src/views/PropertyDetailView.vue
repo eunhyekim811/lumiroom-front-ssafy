@@ -9,16 +9,16 @@
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-gray-100 pb-6">
           <div>
             <span
-              v-if="currentProperty.grade"
-              :class="getSafetyGradeClass(currentProperty.grade)"
+              v-if="currentProperty.safetyGrade"
+              :class="getSafetyGradeClass(currentProperty.safetyGrade)"
               class="text-xs border px-3 py-1 rounded-lg font-black tracking-wide shadow-sm"
             >
-              LumiRoom 안심 {{ currentProperty.grade }}등급 매물
+              LumiRoom 안심 {{ currentProperty.safetyGrade }}등급 매물
             </span>
             
             <div class="flex flex-wrap items-center gap-4 mt-3">
               <h1 class="text-4xl font-black text-gray-900 leading-tight">
-                {{ currentProperty.title }}
+                {{ currentProperty.propertyName || '이름 없는 매물' }}
               </h1>
               
               <button 
@@ -35,14 +35,14 @@
               </button>
             </div>
 
-            <p class="text-gray-700 text-base mt-2.5 font-black">{{ currentProperty.type }} · {{ currentProperty.price }}</p>
+            <p class="text-gray-700 text-base mt-2.5 font-black">{{ currentProperty.rentType }} · {{ formatPrice(currentProperty) }}</p>
             <p class="text-gray-400 text-sm mt-1 font-medium leading-relaxed">{{ currentProperty.address }}</p>
           </div>
           
-          <div v-if="currentProperty.score != null" class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-center sm:min-w-[150px] shadow-sm">
+          <div v-if="currentProperty.safetyScore != null" class="bg-gray-50 border border-gray-200 p-4 rounded-xl text-center sm:min-w-[150px] shadow-sm">
             <span class="text-xs text-gray-400 font-bold block mb-1">인프라 매칭 안전도</span>
             <span class="text-3xl font-black text-brand-point drop-shadow-[0_0_4px_rgba(250,204,21,0.3)]">
-              {{ currentProperty.score }}점
+              {{ currentProperty.safetyScore }}점
             </span>
           </div>
         </div>
@@ -315,7 +315,7 @@ import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
 import { getSafetyGradeClass } from '@/utils/safetyGrade'
-
+import { fetchPropertyById } from '@/api/properties'
 // 1. 분리 전담 모듈 api/favorites.js 기능 함수 일괄 바인딩 유도
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
 
@@ -325,8 +325,10 @@ const authStore = useAuthStore()
 
 const targetId = parseInt(route.params.id)
 const currentProperty = ref(
-  propertyStore.propertiesList.find(p => p.id === targetId) || propertyStore.propertiesList[0]
+  // propertyStore.propertiesList.find(p => p.id === targetId) || propertyStore.propertiesList[0]
+  null
 )
+const isLoading = ref(true)
 
 const favoritePropertyIds = ref([])
 
@@ -428,14 +430,13 @@ const briefingError = ref(null)
 
 const loadAiBriefing = async () => {
   const property = currentProperty.value
-  if (!property || !property.lat || !property.lng) return
+  if (!property || !property.latitude || !property.longitude) return
 
   isBriefingLoading.value = true
   briefingError.value = null
   
   try {
-    // 💡 하이브리드 스캔을 위해 ID 값까지 정확히 백엔드 API로 전송
-    const data = await fetchAiBriefing(property.lat, property.lng, property.id)
+    const data = await fetchAiBriefing(property.latitude, property.longitude, property.id)
     aiBriefing.value = data
   } catch (error) {
     console.error('LumiRoom AI 안심 브리핑 연동 실패:', error)
@@ -468,6 +469,16 @@ const formatBuiltYear = (property) => {
   return builtYear ? `${builtYear}년` : '정보 없음'
 }
 
+const formatPrice = (item) => {
+  if (item.minTradeAmount && item.minTradeAmount > 0) {
+    return `매매 ${item.minTradeAmount.toLocaleString()}만원`
+  }
+  if (item.minMonthlyRentAmount && item.minMonthlyRentAmount > 0) {
+    return `월세 ${item.minDepositAmount.toLocaleString()} / ${item.minMonthlyRentAmount.toLocaleString()}만원`
+  }
+  return `전세 ${item.minDepositAmount.toLocaleString()}만원`
+}
+
 // ==========================================
 // 지도 및 생명주기 로직 (크기 및 타이밍 렌더링 픽스 완료)
 // ==========================================
@@ -477,8 +488,8 @@ const initMiniMap = () => {
       const container = document.getElementById('mini-map')
       if (!container) return
       
-      const lat = currentProperty.value.lat || 37.4812
-      const lng = currentProperty.value.lng || 126.9296
+      const lat = currentProperty.value.latitude || 37.4812
+      const lng = currentProperty.value.longitude || 126.9296
       
       const options = {
         center: new window.kakao.maps.LatLng(lat, lng),
@@ -494,50 +505,39 @@ const initMiniMap = () => {
   }
 }
 
-const loadPropertyData = () => {
+const loadPropertyData = async () => {
   const tId = parseInt(route.params.id)
   if (!tId) return
 
-  // [핵심 수정]: 리스트 전체를 다시 뒤져서 현재 URL ID와 정확히 일치하는 객체를 찾습니다.
-  // 스토어의 selectedProperty를 신뢰하지 않고, 리스트에서 최신 상태를 찾아옵니다.
-  const foundProperty = propertyStore.propertiesList.find(p => p.id === tId)
-  
-  if (foundProperty) {
-    currentProperty.value = foundProperty
-  } else {
-    // 만약 리스트에 없다면 (예: 새로고침 시 스토어가 비어있을 경우)
-    // 현재 스토어의 selectedProperty가 ID와 일치하는지 확인 후 사용하거나,
-    // 데이터가 없음을 처리합니다.
-    if (propertyStore.selectedProperty && propertyStore.selectedProperty.id === tId) {
-      currentProperty.value = propertyStore.selectedProperty
-    } else {
-      console.warn("매물 데이터를 찾을 수 없습니다.")
-      // 필요하다면 여기서 router.push('/')로 홈 이동 가능
-    }
-  }
-
-  // 나머지 초기화 로직 유지
-  newComment.value = ''
-  newRating.value = 5
-  aiBriefing.value = null
-  briefingError.value = null
-
-  if (currentProperty.value && currentProperty.value.id) {
+  isLoading.value = true
+  try {
+    // API를 통해 해당 ID의 데이터 조회
+    currentProperty.value = await fetchPropertyById(tId)
+    
+    // 데이터가 성공적으로 로드된 후 후속 작업
+    await nextTick()
+    initMiniMap()
     loadReviews(currentProperty.value.id)
+  } catch (error) {
+    console.error('매물 상세 정보 조회 실패:', error)
+    alert('해당 매물 정보를 불러올 수 없습니다.')
+    route.back()
+  } finally {
+    isLoading.value = false
   }
 }
 
 watch(() => route.params.id, async () => {
   loadPropertyData()
-  await nextTick()
-  initMiniMap()
+  // await nextTick()
+  // initMiniMap()
   loadUserFavorites()
 })
 
 onMounted(async () => {
   loadPropertyData() 
-  await nextTick()
-  initMiniMap()
+  // await nextTick()
+  // initMiniMap()
   loadUserFavorites()
 })
 </script>
