@@ -29,7 +29,10 @@
           placeholder="동네 또는 지하철역 검색 (예: 신림역)" 
           class="flex-grow px-1 py-1 text-black text-sm outline-none font-black placeholder-gray-400"
         />
-        <button @click="searchPlace" class="bg-yellow-400 hover:bg-yellow-500 text-black px-3 py-1.5 rounded-xl font-black text-xs shadow-md">
+        <button
+          @click="searchPlace"
+          class="shrink-0 min-w-[52px] bg-black hover:bg-gray-800 text-white px-3 py-1.5 rounded-xl font-black text-xs shadow-md whitespace-nowrap transition-colors"
+        >
           검색
         </button>
       </div>
