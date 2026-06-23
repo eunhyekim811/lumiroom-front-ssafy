@@ -8,7 +8,11 @@
       <div class="flex-grow bg-white border border-gray-200 rounded-3xl p-6 md:p-8 space-y-8 shadow-xl">
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-gray-100 pb-6">
           <div>
-            <span v-if="currentProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
+            <span
+              v-if="currentProperty.grade"
+              :class="getSafetyGradeClass(currentProperty.grade)"
+              class="text-xs border px-3 py-1 rounded-lg font-black tracking-wide shadow-sm"
+            >
               LumiRoom 안심 {{ currentProperty.grade }}등급 매물
             </span>
             
@@ -138,13 +142,8 @@
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-3xl font-black text-blue-600">{{ aiBriefing.safetyScore }}점</span>
-                <span 
-                  :class="{
-                    'bg-emerald-100 text-emerald-800 border-emerald-200': aiBriefing.safetyGrade === 'A',
-                    'bg-blue-100 text-blue-800 border-blue-200': aiBriefing.safetyGrade === 'B',
-                    'bg-amber-100 text-yellow-800 border-yellow-200': aiBriefing.safetyGrade === 'C',
-                    'bg-red-100 text-red-800 border-red-200': aiBriefing.safetyGrade === 'D',
-                  }"
+                <span
+                  :class="getSafetyGradeClass(aiBriefing.safetyGrade)"
                   class="px-3 py-1.5 text-sm font-black rounded-lg border"
                 >
                   등급 {{ aiBriefing.safetyGrade }}
@@ -313,6 +312,7 @@ import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
+import { getSafetyGradeClass } from '@/utils/safetyGrade'
 
 // 1. 분리 전담 모듈 api/favorites.js 기능 함수 일괄 바인딩 유도
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'

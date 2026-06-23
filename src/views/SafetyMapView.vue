@@ -114,7 +114,11 @@
                 <p class="text-sm font-black text-gray-700 mt-1">{{ item.type }} · {{ item.price }}</p>
                 <p class="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed truncate">{{ item.address }}</p>
               </div>
-              <span v-if="item.grade" class="text-xs px-2 py-1 rounded font-bold bg-emerald-50 text-emerald-600 border border-emerald-200 whitespace-nowrap">
+              <span
+                v-if="item.grade"
+                :class="getSafetyGradeClass(item.grade)"
+                class="text-xs px-2 py-1 rounded font-bold border whitespace-nowrap"
+              >
                 {{ item.grade }}등급
               </span>
               <span v-else class="text-xs px-2 py-1 rounded font-bold bg-gray-100 text-gray-500 border border-gray-200 whitespace-nowrap">
@@ -136,7 +140,11 @@
         <div class="flex-grow overflow-y-auto p-5 space-y-6">
           <div class="flex flex-col gap-3 border-b border-gray-100 pb-5">
             <div>
-              <span v-if="propertyStore.selectedProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
+              <span
+                v-if="propertyStore.selectedProperty.grade"
+                :class="getSafetyGradeClass(propertyStore.selectedProperty.grade)"
+                class="text-xs border px-3 py-1 rounded-lg font-black tracking-wide shadow-sm"
+              >
                 LumiRoom 안심 {{ propertyStore.selectedProperty.grade }}등급
               </span>
               
@@ -241,13 +249,8 @@
                 </div>
                 <div class="flex items-center gap-2">
                   <span class="text-2xl font-black text-blue-600">{{ aiBriefing.safetyScore }}점</span>
-                  <span 
-                    :class="{
-                      'bg-emerald-100 text-emerald-800 border-emerald-200': aiBriefing.safetyGrade === 'A',
-                      'bg-blue-100 text-blue-800 border-blue-200': aiBriefing.safetyGrade === 'B',
-                      'bg-amber-100 text-yellow-800 border-yellow-200': aiBriefing.safetyGrade === 'C',
-                      'bg-red-100 text-red-800 border-red-200': aiBriefing.safetyGrade === 'D',
-                    }"
+                  <span
+                    :class="getSafetyGradeClass(aiBriefing.safetyGrade)"
                     class="px-2.5 py-1 text-xs font-black rounded-lg border"
                   >
                     등급 {{ aiBriefing.safetyGrade }}
@@ -410,6 +413,7 @@ import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
+import { getSafetyGradeClass } from '@/utils/safetyGrade'
 
 const infraStore = useInfraStore()
 const propertyStore = usePropertyStore()

@@ -44,7 +44,10 @@
             <p class="text-sm text-gray-400 mt-1 font-medium leading-relaxed">{{ item.address }}</p>
           </div>
           <div class="text-right">
-            <span class="inline-block text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100 px-2.5 py-1 rounded-lg">
+            <span
+              :class="getSafetyGradeClass(item.grade)"
+              class="inline-block text-xs font-bold border px-2.5 py-1 rounded-lg"
+            >
               안전 {{ item.grade }}등급
             </span>
           </div>
@@ -66,6 +69,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth'
+import { getSafetyGradeClass } from '@/utils/safetyGrade'
 
 // 관심매물 추가/해제/목록조회 전담 처리 API 함수 일괄 수집
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
