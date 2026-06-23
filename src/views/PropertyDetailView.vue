@@ -8,7 +8,11 @@
       <div class="flex-grow bg-white border border-gray-200 rounded-3xl p-6 md:p-8 space-y-8 shadow-xl">
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-gray-100 pb-6">
           <div>
-            <span v-if="currentProperty.grade" class="text-xs bg-yellow-100 text-brand-point px-3 py-1 rounded-lg font-black tracking-wide shadow-sm">
+            <span
+              v-if="currentProperty.grade"
+              :class="getSafetyGradeClass(currentProperty.grade)"
+              class="text-xs border px-3 py-1 rounded-lg font-black tracking-wide shadow-sm"
+            >
               LumiRoom 안심 {{ currentProperty.grade }}등급 매물
             </span>
             
@@ -64,6 +68,10 @@
               <tr class="border-b border-gray-100">
                 <td class="p-2.5 bg-gray-50 font-bold text-gray-500">매매가 범위</td>
                 <td class="p-2.5 text-gray-700">{{ formatAmountRange(currentProperty.minTradeAmount, currentProperty.maxTradeAmount) }}</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 bg-gray-50 font-bold text-gray-500">건축연도</td>
+                <td class="p-2.5 text-gray-700">{{ formatBuiltYear(currentProperty) }}</td>
               </tr>
             </tbody>
           </table>
@@ -138,13 +146,8 @@
               </div>
               <div class="flex items-center gap-3">
                 <span class="text-3xl font-black text-blue-600">{{ aiBriefing.safetyScore }}점</span>
-                <span 
-                  :class="{
-                    'bg-emerald-100 text-emerald-800 border-emerald-200': aiBriefing.safetyGrade === 'A',
-                    'bg-blue-100 text-blue-800 border-blue-200': aiBriefing.safetyGrade === 'B',
-                    'bg-amber-100 text-yellow-800 border-yellow-200': aiBriefing.safetyGrade === 'C',
-                    'bg-red-100 text-red-800 border-red-200': aiBriefing.safetyGrade === 'D',
-                  }"
+                <span
+                  :class="getSafetyGradeClass(aiBriefing.safetyGrade)"
                   class="px-3 py-1.5 text-sm font-black rounded-lg border"
                 >
                   등급 {{ aiBriefing.safetyGrade }}
@@ -244,7 +247,7 @@
               placeholder="골목길 가로등 상태 등 체감 치안을 남겨보세요." 
               class="flex-grow p-4 bg-gray-50 border border-gray-300 rounded-xl text-sm font-bold outline-none focus:border-brand-point text-gray-900 placeholder-gray-400"
             />
-            <button @click="submitComment" class="bg-yellow-400 hover:bg-yellow-500 text-black border-2 border-yellow-300 px-6 rounded-xl font-black text-sm shadow-md transition-colors whitespace-nowrap">
+            <button @click="submitComment" class="bg-black hover:bg-gray-800 text-white border-2 border-black px-6 rounded-xl font-black text-sm shadow-md transition-colors whitespace-nowrap">
               등록
             </button>
           </div>
@@ -311,6 +314,9 @@ import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
+import { getSafetyGradeClass } from '@/utils/safetyGrade'
+
+// 1. 분리 전담 모듈 api/favorites.js 기능 함수 일괄 바인딩 유도
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
 
 const route = useRoute()
@@ -455,6 +461,11 @@ const formatAmountRange = (min, max) => {
   if (min == null) return `${max}`
   if (max == null || min === max) return `${min}`
   return `${min} ~ ${max}`
+}
+
+const formatBuiltYear = (property) => {
+  const builtYear = property?.builtYear ?? property?.buildYear ?? property?.constructionYear
+  return builtYear ? `${builtYear}년` : '정보 없음'
 }
 
 // ==========================================
