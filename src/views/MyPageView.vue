@@ -74,7 +74,7 @@
                   </button>
                 </div>
                 <div>
-                  <h4 class="font-black text-base text-white group-hover:text-yellow-400 transition-colors truncate">{{ item.title }}</h4>
+                  <h4 class="font-black text-base text-white group-hover:text-yellow-400 transition-colors truncate">{{ item.title || '이름 없는 매물' }}</h4>
                   <p class="text-sm font-black text-yellow-400 mt-1">{{ formatPrice(item) }}</p>
                   <p class="text-[11px] text-gray-400 font-bold mt-1.5 tracking-tight">
                     <span class="block text-gray-300">{{ item.sigungu }}</span>
