@@ -200,6 +200,10 @@
                   <td class="p-2.5 bg-gray-50 font-bold text-gray-500">매매가 범위</td>
                   <td class="p-2.5 text-gray-700">{{ formatAmountRange(propertyStore.selectedProperty.minTradeAmount, propertyStore.selectedProperty.maxTradeAmount) }}</td>
                 </tr>
+                <tr>
+                  <td class="p-2.5 bg-gray-50 font-bold text-gray-500">건축연도</td>
+                  <td class="p-2.5 text-gray-700">{{ formatBuiltYear(propertyStore.selectedProperty) }}</td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -607,6 +611,11 @@ const formatAmountRange = (min, max) => {
   if (min == null) return `${max}`
   if (max == null || min === max) return `${min}`
   return `${min} ~ ${max}`
+}
+
+const formatBuiltYear = (property) => {
+  const builtYear = property?.builtYear ?? property?.buildYear ?? property?.constructionYear
+  return builtYear ? `${builtYear}년` : '정보 없음'
 }
 
 const escapeHtml = (value) => {
