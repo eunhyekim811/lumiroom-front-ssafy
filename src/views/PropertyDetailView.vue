@@ -51,7 +51,7 @@
             <tbody>
               <tr class="border-b border-gray-100">
                 <td class="p-2.5 bg-gray-50 font-bold text-gray-500 w-1/3">거래 유형</td>
-                <td class="p-2.5 text-gray-770">{{ getTransactionLabel(currentProperty.transactionType) }}</td>
+                <td class="p-2.5 text-gray-700">{{ getTransactionLabel(currentProperty.transactionType) }}</td>
               </tr>
               <tr class="border-b border-gray-100">
                 <td class="p-2.5 bg-gray-50 font-bold text-gray-500">보증금 범위</td>
@@ -106,7 +106,7 @@
               @click="loadAiBriefing" 
               class="w-full sm:w-auto mx-auto py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-md transition transform active:scale-95 flex items-center justify-center gap-2"
             >
-              AI 안심 브리핑 분석서 생성
+              ⚡ AI 안심 브리핑 분석서 생성
             </button>
           </div>
 
@@ -172,9 +172,7 @@
             </div>
 
             <div class="bg-blue-500 text-white rounded-2xl p-4 shadow-md">
-              <p class="text-sm font-bold leading-relaxed">
-                📢 {{ aiBriefing.oneLineSummary }}
-              </p>
+              <p class="text-sm font-bold leading-relaxed">📢 {{ aiBriefing.oneLineSummary }}</p>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -313,8 +311,6 @@ import { usePropertyStore } from '@/stores/properties'
 import { useAuthStore } from '@/stores/auth'
 import { fetchReviews, createPropertyReview, deletePropertyReview } from '@/api/reviews'
 import { fetchAiBriefing } from '@/api/ai'
-
-// 1. 분리 전담 모듈 api/favorites.js 기능 함수 일괄 바인딩 유도
 import { fetchMyFavorites, addFavorite, deleteFavorite } from '@/api/favorites'
 
 const route = useRoute()
@@ -326,10 +322,8 @@ const currentProperty = ref(
   propertyStore.propertiesList.find(p => p.id === targetId) || propertyStore.propertiesList[0]
 )
 
-// 2. 유저가 찜해놓은 관심매물 고유 Id 상태 배열 정의
 const favoritePropertyIds = ref([])
 
-// 3. 백엔드 관심 매물 목록 리스트 소환 및 보관 함수 연동
 const loadUserFavorites = async () => {
   if (!authStore.isLoggedIn) return
   try {
@@ -340,7 +334,6 @@ const loadUserFavorites = async () => {
   }
 }
 
-// 4. 관심등록 스왑 토글 액션 핸들러 빌드 (POST/DELETE 분기 통합 완결)
 const toggleFavoriteStatus = async (propertyId) => {
   if (!authStore.isLoggedIn) {
     alert('로그인 후 관심 매물 기능을 이용하실 수 있습니다.')
@@ -421,7 +414,7 @@ const deleteComment = async (reviewId) => {
 }
 
 // ==========================================
-// 3. AI 브리핑 로직 통합
+// AI 브리핑 로직 통합
 // ==========================================
 const aiBriefing = ref(null)
 const isBriefingLoading = ref(false)
@@ -435,7 +428,8 @@ const loadAiBriefing = async () => {
   briefingError.value = null
   
   try {
-    const data = await fetchAiBriefing(property.lat, property.lng)
+    // 💡 하이브리드 스캔을 위해 ID 값까지 정확히 백엔드 API로 전송
+    const data = await fetchAiBriefing(property.lat, property.lng, property.id)
     aiBriefing.value = data
   } catch (error) {
     console.error('LumiRoom AI 안심 브리핑 연동 실패:', error)
@@ -445,9 +439,6 @@ const loadAiBriefing = async () => {
   }
 }
 
-// ==========================================
-// 포맷터 라벨용 헬퍼 함수 통합
-// ==========================================
 const getTransactionLabel = (transactionType) => {
   const labels = {
     SALE: '매매',
@@ -467,7 +458,7 @@ const formatAmountRange = (min, max) => {
 }
 
 // ==========================================
-// 4. 지도 및 생명주기 로직
+// 지도 및 생명주기 로직 (크기 및 타이밍 렌더링 픽스 완료)
 // ==========================================
 const initMiniMap = () => {
   if (window.kakao && window.kakao.maps && currentProperty.value) {
@@ -494,9 +485,27 @@ const initMiniMap = () => {
 
 const loadPropertyData = () => {
   const tId = parseInt(route.params.id)
-  currentProperty.value = propertyStore.propertiesList.find(p => p.id === tId) 
-    || propertyStore.propertiesList[0]
+  if (!tId) return
 
+  // [핵심 수정]: 리스트 전체를 다시 뒤져서 현재 URL ID와 정확히 일치하는 객체를 찾습니다.
+  // 스토어의 selectedProperty를 신뢰하지 않고, 리스트에서 최신 상태를 찾아옵니다.
+  const foundProperty = propertyStore.propertiesList.find(p => p.id === tId)
+  
+  if (foundProperty) {
+    currentProperty.value = foundProperty
+  } else {
+    // 만약 리스트에 없다면 (예: 새로고침 시 스토어가 비어있을 경우)
+    // 현재 스토어의 selectedProperty가 ID와 일치하는지 확인 후 사용하거나,
+    // 데이터가 없음을 처리합니다.
+    if (propertyStore.selectedProperty && propertyStore.selectedProperty.id === tId) {
+      currentProperty.value = propertyStore.selectedProperty
+    } else {
+      console.warn("매물 데이터를 찾을 수 없습니다.")
+      // 필요하다면 여기서 router.push('/')로 홈 이동 가능
+    }
+  }
+
+  // 나머지 초기화 로직 유지
   newComment.value = ''
   newRating.value = 5
   aiBriefing.value = null
@@ -504,8 +513,6 @@ const loadPropertyData = () => {
 
   if (currentProperty.value && currentProperty.value.id) {
     loadReviews(currentProperty.value.id)
-  } else {
-    comments.value = []
   }
 }
 
@@ -513,8 +520,6 @@ watch(() => route.params.id, async () => {
   loadPropertyData()
   await nextTick()
   initMiniMap()
-  
-  // 5. 패스 아이디 라우트 갱신 시 관심 배열 리로드 가이드
   loadUserFavorites()
 })
 
@@ -522,8 +527,6 @@ onMounted(async () => {
   loadPropertyData() 
   await nextTick()
   initMiniMap()
-  
-  // 6. 마운트 수명 주기 발동 즉시 회원 관심 매물 동적 대조용 로드 기동
   loadUserFavorites()
 })
 </script>
