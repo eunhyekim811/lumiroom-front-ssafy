@@ -124,7 +124,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       // await http.post('/auth/signup', { email, password, nickname });
-      await axios.post(`${baseUrl}/api/auth/signup`, { email, password, nickname });
+      await axios.post(`${baseUrl}api/auth/signup`, { email, password, nickname });
       return true;
     } catch (error) {
       throw error.response?.data || '회원가입에 실패했습니다.';
@@ -138,7 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     try {
       // const response = await http.post('/auth/login', { email, password });
-      const response = await axios.post(`${baseUrl}/api/auth/login`, { email, password });
+      const response = await axios.post(`${baseUrl}api/auth/login`, { email, password });
       const { accessToken, refreshToken } = response.data;
 
       localStorage.setItem('accessToken', accessToken);
@@ -173,7 +173,7 @@ export const useAuthStore = defineStore('auth', () => {
 
       // 전송할 토큰이 하나라도 있다면 '순수 axios'로 전송하여 인터셉터(자동 갱신)를 회피!
       if (Object.keys(headers).length > 0) {
-        await axios.post(`${baseUrl}/api/auth/logout`, {}, { headers });
+        await axios.post(`${baseUrl}api/auth/logout`, {}, { headers });
       }
     } catch (error) {
       console.error('서버 로그아웃 처리 중 예외 (이미 파기되었을 수 있음)', error);

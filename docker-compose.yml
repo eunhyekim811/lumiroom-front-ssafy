@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  frontend:
+    container_name: lumiroom-front
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        # [Dockerfile 변수]: [서버 호스트/.env 변수]
+        - VITE_KAKAO_MAP_API_KEY=${VITE_KAKAO_MAP_API_KEY}
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+    ports:
+      - "80:80"
+    restart: always
+    networks:
+      - lumiroom-backend-network
+
+# 백엔드가 이미 만들어둔 네트워크를 외부(external)에서 가져와 연결합니다.
+networks:
+  lumiroom-backend-network:
+    name: lumipath_final_gwangju_02_yerimson_eunhyekim_default
+    external: true
